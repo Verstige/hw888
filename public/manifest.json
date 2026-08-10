@@ -1,0 +1,22 @@
+{
+  "name": "HW888 — Holistic World Sales Platform",
+  "short_name": "HW888",
+  "description": "Trade show sales tracking, commission management, and field operations for Holistic World.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FAFAF7",
+  "theme_color": "#2D5A3D",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
