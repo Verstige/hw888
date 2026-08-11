@@ -1,108 +1,66 @@
-"use client";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { loginAction } from "./actions";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      setError("Invalid email or password");
-      setLoading(false);
-    } else {
-      router.push("/dashboard");
-    }
-  };
+export default async function LoginPage() {
+  const session = await auth();
+  if (session) redirect("/dashboard");
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "1rem" }}>
-      <div className="glass" style={{ padding: "2.5rem", width: "100%", maxWidth: "420px" }}>
-        {/* Logo / Title */}
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div
-            style={{
-              fontSize: "2.5rem",
-              fontWeight: 700,
-              letterSpacing: "0.15em",
-              background: "linear-gradient(135deg, #C9A84C 0%, #E0C36A 50%, #C9A84C 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              marginBottom: "0.25rem",
-            }}
-          >
-            HW888
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)] px-4">
+      <div className="w-full max-w-md">
+        {/* Logo / Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--color-primary)] mb-4">
+            <span className="text-white font-bold text-2xl">HW</span>
           </div>
-          <p style={{ color: "#8A9E8C", fontSize: "0.85rem", fontWeight: 500 }}>
-            Holistic World · Sales Platform
-          </p>
+          <h1 className="text-2xl font-bold text-[var(--color-text)]">HW888</h1>
+          <p className="text-[var(--color-text-muted)] mt-1">Holistic World Sales Platform</p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#8A9E8C", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="employee@holisticworldus.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#8A9E8C", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <div style={{ background: "rgba(196,68,68,0.15)", border: "1px solid rgba(196,68,68,0.3)", borderRadius: "8px", padding: "0.75rem", color: "#e05555", fontSize: "0.85rem", textAlign: "center" }}>
-              {error}
+        <div className="card">
+          <form action={loginAction} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text)] mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@holisticworldus.com"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            className="btn btn-gold"
-            disabled={loading}
-            style={{ width: "100%", padding: "0.875rem", fontSize: "1rem", marginTop: "0.5rem" }}
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text)] mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-text)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
+            </div>
 
-        <div className="divider" style={{ margin: "1.5rem 0" }} />
-        <p style={{ textAlign: "center", color: "#5A6E5C", fontSize: "0.8rem" }}>
-          Contact your manager to get your login credentials.
+            <button
+              type="submit"
+              className="w-full py-2.5 px-4 bg-[var(--color-primary)] text-white font-semibold rounded-lg hover:bg-[var(--color-primary-light)] transition-colors"
+            >
+              Sign In
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-xs text-[var(--color-text-muted)] mt-6">
+          HW888 — Holistic World Internal Platform
         </p>
       </div>
     </div>

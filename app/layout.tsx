@@ -1,36 +1,39 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
-import Providers from "./providers";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
+const inter = Inter({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "HW888 — Holistic World",
-  description: "Sales platform for Holistic World field teams",
-  icons: { icon: "/favicon.ico" },
+  title: "HW888 — Holistic World Sales Platform",
+  description: "Trade show sales tracking, commission management, and field operations for Holistic World.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HW888",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#0D1F15",
+  themeColor: "#2D5A3D",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body>
-        <Providers>
-          {/* Halo background */}
-          <div className="halo-bg">
-            <div className="halo-orb halo-orb-center" />
-            <div className="halo-orb halo-orb-gold" />
-          </div>
-          {/* Content */}
-          <div style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>
-            {children}
-          </div>
-        </Providers>
+      <body className={`${inter.variable} min-h-screen flex flex-col`}>
+        {children}
       </body>
     </html>
   );
