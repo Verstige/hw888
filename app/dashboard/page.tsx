@@ -1,190 +1,209 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { signOut } from "next-auth/react";
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-export default async function DashboardPage() {
-  const session = await auth();
-  if (!session) redirect("/login");
+interface Stats {
+  todaySales: number;
+  todayCommission: number;
+  weekSales: number;
+  weekCommission: number;
+  todayTransactions: number;
+  pendingSync: number;
+}
 
-  const userId = (session.user as any).id;
-  const userRole = (session.user as any).role;
+interface Show {
+  id: string;
+  name: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
 
-  // Get today's sales for this user
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+interface RecentSale {
+  id: string;
+  total: number;
+  commission: number;
+  createdAt: string;
+  items: { productName: string; quantity: number; price: number }[];
+}
 
-  const todaySales = await prisma.sale.aggregate({
-    where: { userId, createdAt: { gte: today } },
-    _sum: { salePrice: true, commission: true },
-    _count: true,
-  });
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [shows, setShows] = useState<Show[]>([]);
+  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
+  const [loading, setLoading] = useState(true);
+  const role = (session?.user as any)?.role;
 
-  // Active show (if any)
-  const activeShows = await prisma.show.findMany({
-    where: {
-      status: "ACTIVE",
-      assignments: { some: { userId } },
-    },
-    take: 1,
-    include: {
-      manager: { select: { name: true } },
-    },
-  });
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/login");
+  }, [status, router]);
 
-  const activeShow = activeShows[0] || null;
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/dashboard/stats")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setStats(data); });
+    fetch("/api/shows")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setShows(data.slice(0, 3)); });
+    fetch("/api/sales?limit=5")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.sales) setRecentSales(data.sales); setLoading(false); });
+  }, [session]);
 
-  // Recent sales
-  const recentSales = await prisma.sale.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    include: {
-      show: { select: { name: true, location: true } },
-    },
-  });
+  if (status === "loading" || loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="animate-spin-slow" style={{ fontSize: "2rem", marginBottom: "1rem" }}>⟳</div>
+          <p style={{ color: "#8A9E8C" }}>Loading HW888...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const roleLabel = ({ ADMIN: "Admin", MANAGER: "Manager", EMPLOYEE: "Employee" } as Record<string, string>)[userRole as string];
+  const name = (session?.user as any)?.name || "Team Member";
+  const firstName = name.split(" ")[0];
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div style={{ padding: "1.5rem", maxWidth: "1200px", margin: "0 auto", paddingBottom: "6rem" }}>
       {/* Header */}
-      <header className="bg-[var(--color-primary)] text-white px-6 py-5">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-80">Welcome back,</p>
-              <h1 className="text-xl font-bold">{session.user?.name}</h1>
-              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full mt-1 inline-block">{roleLabel}</span>
-            </div>
-            <form action={async () => {
-              "use server";
-              const { logoutAction } = await import("@/app/login/actions");
-              await logoutAction();
-            }}>
-              <button type="submit" className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors">
-                Sign Out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="card text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">Today&apos;s Sales</p>
-            <p className="text-2xl font-bold text-[var(--color-primary)]">
-              ${(todaySales._sum.salePrice || 0).toLocaleString()}
+      <div style={{ marginBottom: "2rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <div>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#F0EFE8" }}>
+              Welcome back, <span className="gradient-text">{firstName}</span>
+            </h1>
+            <p style={{ color: "#8A9E8C", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
           </div>
-          <div className="card text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">Commission Today</p>
-            <p className="text-2xl font-bold text-[var(--color-secondary)]">
-              ${(todaySales._sum.commission || 0).toLocaleString()}
-            </p>
-          </div>
-          <div className="card text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">Sales Count</p>
-            <p className="text-2xl font-bold">{todaySales._count}</p>
-          </div>
-        </div>
-
-        {/* Active Show Banner */}
-        {activeShow ? (
-          <div className="card border-l-4 border-[var(--color-primary)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wide mb-0.5">Active Show</p>
-                <h2 className="text-lg font-bold">{activeShow.name}</h2>
-                <p className="text-sm text-[var(--color-text-muted)]">{activeShow.location}</p>
-              </div>
-              <Link
-                href="/sale"
-                className="px-5 py-2.5 bg-[var(--color-primary)] text-white font-semibold rounded-lg hover:bg-[var(--color-primary-light)] transition-colors"
-              >
-                Open POS
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {role === "ADMIN" && (
+              <Link href="/admin/users" className="btn btn-primary" style={{ fontSize: "0.8rem", padding: "0.5rem 1rem" }}>
+                ⚙️ Admin
               </Link>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="card border-l-4 border-[var(--color-warning)]">
-            <p className="text-sm text-[var(--color-text-muted)]">No active show assigned. Check your calendar for upcoming shows.</p>
-            <Link href="/shows" className="text-sm text-[var(--color-primary)] font-medium mt-1 inline-block">
-              View Shows →
-            </Link>
-          </div>
-        )}
-
-        {/* Quick Nav */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { href: "/sale", label: "Record Sale", icon: "💰", color: "bg-[var(--color-primary)]" },
-            { href: "/shows", label: "Shows", icon: "📅", color: "bg-[var(--color-secondary)]" },
-            { href: "/leaderboard", label: "Leaderboard", icon: "🏆", color: "bg-[var(--color-accent)]" },
-            { href: "/travel", label: "My Travel", icon: "✈️", color: "bg-blue-600" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`${item.color} text-white rounded-xl p-4 text-center hover:opacity-90 transition-opacity`}
-            >
-              <div className="text-2xl mb-1">{item.icon}</div>
-              <p className="text-sm font-semibold">{item.label}</p>
-            </Link>
-          ))}
         </div>
+      </div>
 
-        {/* Admin-only links */}
-        {userRole === "ADMIN" && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-[var(--color-text)]">Admin</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { href: "/admin/users", label: "Users" },
-                { href: "/admin/inventory", label: "Inventory" },
-                { href: "/admin/equipment", label: "Equipment" },
-                { href: "/admin/grocery", label: "Grocery" },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="card text-center hover:border-[var(--color-primary)] transition-colors"
-                >
-                  <p className="font-semibold text-[var(--color-text)]">{item.label}</p>
-                </Link>
-              ))}
+      {/* Commission Hero */}
+      {stats && (
+        <div className="glass glow-gold" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+            <div>
+              <p style={{ color: "#8A9E8C", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, marginBottom: "0.25rem" }}>
+                Today&apos;s Commission
+              </p>
+              <div style={{ fontSize: "2.5rem", fontWeight: 700, color: "#C9A84C", textShadow: "0 0 30px rgba(201,168,76,0.4)" }}>
+                ${stats.todayCommission.toFixed(2)}
+              </div>
+              <p style={{ color: "#5A6E5C", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                on ${stats.todaySales.toFixed(2)} in sales · {stats.todayTransactions} transaction{stats.todayTransactions !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ color: "#8A9E8C", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, marginBottom: "0.25rem" }}>
+                This Week
+              </p>
+              <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#F0EFE8" }}>
+                ${stats.weekCommission.toFixed(2)}
+              </div>
+              <p style={{ color: "#5A6E5C", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+                on ${stats.weekSales.toFixed(2)} in sales
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Recent Sales */}
-        <div>
-          <h2 className="text-lg font-bold text-[var(--color-text)] mb-3">Recent Sales</h2>
-          {recentSales.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-[var(--color-text-muted)]">No sales recorded yet. Head to the POS to get started.</p>
-            </div>
+      {/* Quick Actions */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <Link href="/sale" className="glass pressable" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.5rem", textDecoration: "none" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>💰</div>
+          <div style={{ fontWeight: 700, color: "#F0EFE8", fontSize: "1rem" }}>New Sale</div>
+          <div style={{ color: "#5A6E5C", fontSize: "0.75rem", marginTop: "0.25rem" }}>Record a transaction</div>
+        </Link>
+        <Link href="/leaderboard" className="glass pressable" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.5rem", textDecoration: "none" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🏆</div>
+          <div style={{ fontWeight: 700, color: "#F0EFE8", fontSize: "1rem" }}>Leaderboard</div>
+          <div style={{ color: "#5A6E5C", fontSize: "0.75rem", marginTop: "0.25rem" }}>See rankings</div>
+        </Link>
+        <Link href="/shows" className="glass pressable" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.5rem", textDecoration: "none" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📅</div>
+          <div style={{ fontWeight: 700, color: "#F0EFE8", fontSize: "1rem" }}>Shows</div>
+          <div style={{ color: "#5A6E5C", fontSize: "0.75rem", marginTop: "0.25rem" }}>Check in/out</div>
+        </Link>
+        <Link href="/travel" className="glass pressable" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "1.5rem", textDecoration: "none" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✈️</div>
+          <div style={{ fontWeight: 700, color: "#F0EFE8", fontSize: "1rem" }}>Travel</div>
+          <div style={{ color: "#5A6E5C", fontSize: "0.75rem", marginTop: "0.25rem" }}>Trips & flights</div>
+        </Link>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1.5rem" }}>
+        {/* Upcoming Shows */}
+        <div className="glass">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#C9A84C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Upcoming Shows</h2>
+            <Link href="/shows" style={{ color: "#5A6E5C", fontSize: "0.8rem", textDecoration: "none" }}>View all →</Link>
+          </div>
+          {shows.length === 0 ? (
+            <p style={{ color: "#5A6E5C", fontSize: "0.875rem", textAlign: "center", padding: "1rem" }}>No upcoming shows assigned.</p>
           ) : (
-            <div className="space-y-2">
-              {recentSales.map((sale) => (
-                <div key={sale.id} className="card flex items-center justify-between py-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {shows.map((show) => (
+                <div key={show.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.875rem", background: "rgba(21,37,24,0.6)", borderRadius: "10px", border: "1px solid rgba(45,90,61,0.2)" }}>
                   <div>
-                    <p className="font-medium">{sale.productLevel.replace("LEVEL_", "")} — {sale.productModel}</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{sale.show?.name} · {sale.productStyle}</p>
+                    <div style={{ fontWeight: 600, color: "#F0EFE8", fontSize: "0.9rem" }}>{show.name}</div>
+                    <div style={{ color: "#8A9E8C", fontSize: "0.8rem" }}>{show.location}</div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-[var(--color-primary)]">${sale.salePrice}</p>
-                    <p className="text-xs text-[var(--color-secondary)]">+${sale.commission} commission</p>
+                  <div style={{ textAlign: "right" }}>
+                    <div className={`badge-${show.status === "ACTIVE" ? "green" : "secondary"}`} style={{ fontSize: "0.7rem" }}>
+                      {new Date(show.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </main>
+
+        {/* Recent Sales */}
+        {recentSales.length > 0 && (
+          <div className="glass">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#C9A84C", textTransform: "uppercase", letterSpacing: "0.05em" }}>Recent Sales</h2>
+              <Link href="/sale" style={{ color: "#5A6E5C", fontSize: "0.8rem", textDecoration: "none" }}>New sale →</Link>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {recentSales.map((sale) => (
+                <div key={sale.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(21,37,24,0.6)", borderRadius: "10px" }}>
+                  <div>
+                    <div style={{ fontSize: "0.85rem", color: "#F0EFE8", fontWeight: 600 }}>
+                      {sale.items.map((i) => `${i.quantity}× ${i.productName}`).join(", ")}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#5A6E5C", marginTop: "0.2rem" }}>
+                      {new Date(sale.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700, color: "#3DA85C", fontSize: "0.9rem" }}>+${sale.commission.toFixed(2)}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#8A9E8C" }}>${sale.total.toFixed(2)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
