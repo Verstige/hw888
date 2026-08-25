@@ -155,18 +155,38 @@ async function main() {
     { item: "Protein bars", quantity: "1 box", estimatedCost: 15 },
   ];
 
+  // Create sample grocery items (idempotent — skip if already exists)
   for (const gi of groceryItems) {
-    await prisma.groceryItem.create({
-      data: {
-        showId: show.id,
-        addedById: manager.id,
-        item: gi.item,
-        quantity: gi.quantity,
-        estimatedCost: gi.estimatedCost,
-      },
+    const existingGrocery = await prisma.groceryItem.findFirst({
+      where: { showId: show.id, item: gi.item },
     });
+    if (!existingGrocery) {
+      await prisma.groceryItem.create({
+        data: {
+          showId: show.id,
+          addedById: manager.id,
+          item: gi.item,
+          quantity: gi.quantity,
+          estimatedCost: gi.estimatedCost,
+        },
+      });
+    }
   }
   console.log(`✅ Grocery list created for ${show.name}`);
+
+  // Create default CommissionRate records for all active users (idempotent)
+  const allUsers = await prisma.user.findMany({ where: { isActive: true }, select: { id: true, role: true } });
+  for (const u of allUsers) {
+    const defaults = u.role === "MANAGER" || u.role === "ADMIN"
+      ? { baseRate: 0.30, managerBonus: 0.03 }
+      : { baseRate: 0.30, managerBonus: 0.00 };
+    await prisma.commissionRate.upsert({
+      where: { userId: u.id },
+      update: {},
+      create: { userId: u.id, ...defaults },
+    });
+  }
+  console.log(`✅ Commission rates initialized for ${allUsers.length} users`);
 
   console.log("\n🎉 Seed complete!");
   console.log("\n📋 Login credentials:");
@@ -177,8 +197,9 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e);
-    process.exit(1);
+    console.error("Seed error (non-fatal):", e.message);
+    // Don't crash the app — seed is for convenience, not critical state
+    process.exit(0);
   })
   .finally(async () => {
     await prisma.$disconnect();
