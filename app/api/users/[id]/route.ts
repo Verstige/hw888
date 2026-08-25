@@ -40,13 +40,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const allowed = userRole === "ADMIN"
-    ? ["name", "email", "role", "managerId", "isActive"]
-    : ["name"];
+    ? ["name", "email", "role", "managerId", "isActive", "city", "homeAirportCode"]
+    : ["name", "city", "homeAirportCode"]; // users can set their own location
 
   const data: any = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key];
   }
+  // Normalize homeAirportCode to uppercase
+  if (data.homeAirportCode) data.homeAirportCode = String(data.homeAirportCode).toUpperCase().slice(0, 4);
 
   const user = await prisma.user.update({ where: { id }, data });
   return NextResponse.json(user);

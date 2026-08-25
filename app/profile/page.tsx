@@ -21,6 +21,10 @@ export default async function ProfilePage() {
   });
   if (!user) redirect("/login");
 
+  // Airports + states for the location picker
+  const airports = (await import("@/lib/flights")).listAirports();
+  const states = (await import("@/lib/flights")).listUSStates();
+
   // Recent sales (last 30)
   const recentSales = await prisma.sale.findMany({
     where: { userId },
@@ -62,7 +66,11 @@ export default async function ProfilePage() {
         role: user.role as "ADMIN" | "MANAGER" | "EMPLOYEE",
         manager: user.manager,
         employees: user.employees,
+        city: user.city,
+        homeAirportCode: user.homeAirportCode,
       }}
+      airports={airports}
+      states={states}
       recentSales={recentSales.map((s) => ({
         id: s.id,
         productLevel: s.productLevel,

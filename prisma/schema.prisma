@@ -67,17 +67,19 @@ enum TripStatus {
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(EMPLOYEE)
-  managerId    String?
-  manager      User?    @relation("ManagerEmployees", fields: [managerId], references: [id])
-  employees    User[]   @relation("ManagerEmployees")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  passwordHash    String
+  role            Role     @default(EMPLOYEE)
+  managerId       String?
+  manager         User?    @relation("ManagerEmployees", fields: [managerId], references: [id])
+  employees       User[]   @relation("ManagerEmployees")
+  isActive        Boolean  @default(true)
+  city            String?  // free-text — "Orlando", "LA", etc.
+  homeAirportCode String?  // 3-letter IATA — "MCO", "LAX"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
   sales              Sale[]
@@ -95,6 +97,8 @@ model User {
 
   @@index([managerId])
   @@index([role])
+  @@index([city])
+  @@index([homeAirportCode])
 }
 
 // ─── CommissionRate ──────────────────────────────────────────────────────────

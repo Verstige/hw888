@@ -17,7 +17,11 @@ type Props = {
     role: "ADMIN" | "MANAGER" | "EMPLOYEE";
     manager: { id: string; name: string; email: string } | null;
     employees: Array<{ id: string; name: string; email: string; role: string }>;
+    city?: string | null;
+    homeAirportCode?: string | null;
   };
+  airports: Array<{ code: string; name: string; city: string; state: string }>;
+  states: Array<{ code: string; name: string }>;
   recentSales: Array<{
     id: string;
     productLevel: string;
@@ -53,13 +57,33 @@ type Breakdown = {
   salesCount: number;
 };
 
-export default function ProfileClient({ user, recentSales, attendedShows }: Props) {
+export default function ProfileClient({ user, airports, states, recentSales, attendedShows }: Props) {
   const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
   const [loading, setLoading] = useState(true);
+  const [city, setCity] = useState(user.city || "");
+  const [homeAirportCode, setHomeAirportCode] = useState(user.homeAirportCode || "");
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationSaved, setLocationSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/commission/me").then((r) => r.json()).then((d) => { setBreakdown(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
+
+  const saveLocation = async () => {
+    setSavingLocation(true);
+    setLocationSaved(false);
+    try {
+      await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city: city.trim() || null, homeAirportCode: homeAirportCode.trim() || null }),
+      });
+      setLocationSaved(true);
+      setTimeout(() => setLocationSaved(false), 3000);
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   const initials = user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
   const isManager = user.role === "MANAGER" || user.role === "ADMIN";
@@ -89,6 +113,47 @@ export default function ProfileClient({ user, recentSales, attendedShows }: Prop
           </div>
         </div>
         <ThemeToggle />
+      </GlassCard>
+
+      {/* Location */}
+      <GlassCard padding="md" style={{ marginBottom: "1.25rem" }}>
+        <div className="section-title">
+          <div>
+            <h2>Location</h2>
+            <p className="section-title-sub">Where you live — used for flight search</p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }} className="form-grid-2">
+          <div>
+            <label className="label">City</label>
+            <input
+              className="input"
+              type="text"
+              placeholder="e.g. Orlando"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">Home airport (IATA code)</label>
+            <select
+              className="input"
+              value={homeAirportCode}
+              onChange={(e) => setHomeAirportCode(e.target.value)}
+            >
+              <option value="">— Pick your airport —</option>
+              {airports.map((a) => (
+                <option key={a.code} value={a.code}>{a.city} ({a.code}) · {a.state}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+          {locationSaved && <span style={{ fontSize: "0.75rem", color: "var(--color-success)", fontWeight: 600 }}>✓ Saved</span>}
+          <button onClick={saveLocation} disabled={savingLocation} className="btn btn-primary">
+            {savingLocation ? "Saving…" : "Save location"}
+          </button>
+        </div>
       </GlassCard>
 
       {/* Commission card */}

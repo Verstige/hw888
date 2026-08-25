@@ -8,7 +8,9 @@ import { formatCurrency } from "@/lib/products";
 import { format } from "date-fns";
 
 type Show = { id: string; name: string; location: string; startDate: string; endDate: string };
-type User = { id: string; name: string; email: string; role: string };
+type User = { id: string; name: string; email: string; role: string; city?: string | null; homeAirportCode?: string | null };
+type Airport = { code: string; name: string; city: string; state: string };
+type State = { code: string; name: string };
 type FlightOption = {
   id: string;
   showId: string;
@@ -22,7 +24,22 @@ type FlightOption = {
   isActive: boolean;
   notes: string | null;
 };
-
+type SearchResult = {
+  id: string;
+  airline: string;
+  airlineCode: string;
+  flightNumber?: string;
+  originCode: string;
+  destinationCode: string;
+  departureDate: string;
+  arrivalDate: string;
+  durationMinutes: number;
+  price: number;
+  currency: string;
+  stops: number;
+  bookingUrl: string;
+  source: "amadeus" | "mock";
+};
 type BookedFlight = {
   id: string;
   type: string;
@@ -32,7 +49,6 @@ type BookedFlight = {
   user?: { id: string; name: string; role: string };
 };
 
-const AIRLINES = ["FRONTIER", "SOUTHWEST", "DELTA", "UNITED", "AMERICAN", "SPIRIT", "ALASKA"];
 const AIRLINE_COLORS: Record<string, string> = {
   FRONTIER: "#1B5E20",
   SOUTHWEST: "#E67E22",
@@ -49,16 +65,29 @@ type Props = {
   shows: Show[];
   users: User[];
   flightOptions: FlightOption[];
+  airports: Airport[];
+  states: State[];
+  currentUser: User;
 };
 
-export default function TravelClient({ userRole, userId, shows, users, flightOptions }: Props) {
-  const [tab, setTab] = useState<"browse" | "booked">("browse");
+export default function TravelClient({ userRole, userId, shows, users, flightOptions, airports, states, currentUser }: Props) {
+  const [tab, setTab] = useState<"browse" | "search" | "booked">("search");
   const [showFilter, setShowFilter] = useState<string>("");
   const [airlineFilter, setAirlineFilter] = useState<string>("");
   const [bookings, setBookings] = useState<BookedFlight[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState<Show | null>(null);
   const [bookModalOption, setBookModalOption] = useState<FlightOption | null>(null);
+
+  // Search state
+  const [from, setFrom] = useState<string>(currentUser.homeAirportCode || "");
+  const [to, setTo] = useState<string>("");
+  const [fromState, setFromState] = useState<string>("");
+  const [toState, setToState] = useState<string>("");
+  const [date, setDate] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchSource, setSearchSource] = useState<"amadeus" | "mock" | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -87,7 +116,32 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
     return Object.values(map).sort((a, b) => new Date(a.show.startDate).getTime() - new Date(b.show.startDate).getTime());
   }, [filteredOptions, shows]);
 
-  const handleBook = async (optionId: string, userIdToBook: string) => {
+  // Filter airport dropdowns by state
+  const fromAirports = useMemo(() => fromState ? airports.filter((a) => a.state === fromState) : airports, [airports, fromState]);
+  const toAirports = useMemo(() => toState ? airports.filter((a) => a.state === toState) : airports, [airports, toState]);
+
+  const handleSearch = async () => {
+    if (!from || !to || !date) {
+      setSearchError("Pick origin, destination, and date");
+      return;
+    }
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    try {
+      const r = await fetch(`/api/travel/search?from=${from}&to=${to}&date=${date}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Search failed");
+      setSearchResults(data.offers || []);
+      setSearchSource(data.source);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : "Search failed");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleBookFlightOption = async (optionId: string, userIdToBook: string) => {
     const res = await fetch("/api/travel/book-flight", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,6 +151,7 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
       const newTrip = await res.json();
       setBookings((b) => [...b, newTrip]);
       setBookModalOption(null);
+      setTab("booked");
     } else {
       const e = await res.json();
       alert(e.error || "Booking failed");
@@ -107,26 +162,148 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
 
   return (
     <ClientAuthShell pageTitle="Travel" pageSubtitle="Flights, hotels, cars">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: 10 }}>
-        <div>
-          <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Travel</h1>
-          <p className="section-title-sub" style={{ marginTop: 4 }}>{bookings.filter((b) => b.type === "FLIGHT").length} flight{bookings.filter((b) => b.type === "FLIGHT").length !== 1 ? "s" : ""} booked</p>
-        </div>
+      <div style={{ marginBottom: "1rem" }}>
+        <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Travel</h1>
+        <p className="section-title-sub" style={{ marginTop: 4 }}>
+          {currentUser.city ? `${currentUser.city} · ${currentUser.homeAirportCode || "no home airport set"}` : "Set your home airport in /profile"}
+        </p>
       </div>
 
       {/* Tabs */}
       <div className="pill-group" style={{ marginBottom: "1rem", width: "100%" }}>
+        <button onClick={() => setTab("search")} className={`pill ${tab === "search" ? "pill-active" : ""}`} style={{ flex: 1 }}>
+          <Icon name="search" size={14} /><span>Search flights</span>
+        </button>
         <button onClick={() => setTab("browse")} className={`pill ${tab === "browse" ? "pill-active" : ""}`} style={{ flex: 1 }}>
-          <Icon name="search" size={14} /><span>Browse flights</span>
+          <Icon name="package" size={14} /><span>Saved options</span>
         </button>
         <button onClick={() => setTab("booked")} className={`pill ${tab === "booked" ? "pill-active" : ""}`} style={{ flex: 1 }}>
-          <Icon name="package" size={14} /><span>Booked flights ({bookings.filter((b) => b.type === "FLIGHT").length})</span>
+          <Icon name="check" size={14} /><span>Booked ({bookings.filter((b) => b.type === "FLIGHT").length})</span>
         </button>
       </div>
 
+      {tab === "search" && (
+        <>
+          {/* Search form */}
+          <GlassCard padding="md" style={{ marginBottom: "1rem" }}>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }} className="form-grid-2">
+              <div>
+                <label className="label">From state</label>
+                <select className="input" value={fromState} onChange={(e) => { setFromState(e.target.value); setFrom(""); }}>
+                  <option value="">Any state</option>
+                  {states.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">To state</label>
+                <select className="input" value={toState} onChange={(e) => { setToState(e.target.value); setTo(""); }}>
+                  <option value="">Any state</option>
+                  {states.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Departure airport</label>
+                <select className="input" value={from} onChange={(e) => setFrom(e.target.value)}>
+                  <option value="">Pick an airport…</option>
+                  {fromAirports.map((a) => <option key={a.code} value={a.code}>{a.city} ({a.code})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">Arrival airport</label>
+                <select className="input" value={to} onChange={(e) => setTo(e.target.value)}>
+                  <option value="">Pick an airport…</option>
+                  {toAirports.map((a) => <option key={a.code} value={a.code}>{a.city} ({a.code})</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="label">Departure date</label>
+                <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
+            </div>
+            <button onClick={handleSearch} disabled={searching || !from || !to || !date} className="btn btn-primary" style={{ width: "100%", marginTop: 12 }}>
+              {searching ? "Searching…" : "Search flights"}
+            </button>
+            {searchError && (
+              <div style={{ padding: "0.625rem 0.875rem", background: "rgba(196, 68, 68, 0.10)", color: "var(--color-danger)", borderRadius: 10, fontSize: "0.8125rem", fontWeight: 600, marginTop: 10 }}>
+                {searchError}
+              </div>
+            )}
+          </GlassCard>
+
+          {/* Search results */}
+          {searchResults.length > 0 && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <p className="section-title-sub">{searchResults.length} flight{searchResults.length !== 1 ? "s" : ""} found</p>
+                {searchSource === "mock" && (
+                  <span style={{ fontSize: "0.6875rem", padding: "0.25rem 0.5rem", background: "rgba(201, 168, 76, 0.18)", color: "var(--color-secondary-dark)", borderRadius: 8, fontWeight: 700 }}>
+                    ESTIMATE · Set Amadeus API keys in Railway env for live data
+                  </span>
+                )}
+                {searchSource === "amadeus" && (
+                  <span style={{ fontSize: "0.6875rem", padding: "0.25rem 0.5rem", background: "rgba(45, 138, 78, 0.15)", color: "var(--color-success)", borderRadius: 8, fontWeight: 700 }}>
+                    LIVE · Amadeus
+                  </span>
+                )}
+              </div>
+              <GlassCard padding="md" style={{ marginBottom: "1rem" }}>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {searchResults.map((r) => (
+                    <div key={r.id} style={{
+                      padding: "0.75rem 0.875rem",
+                      background: "var(--glass-bg-soft)",
+                      border: "1px solid var(--glass-border-soft)",
+                      borderRadius: 14,
+                      display: "grid",
+                      gap: 8,
+                      gridTemplateColumns: "auto 1fr auto",
+                      alignItems: "center",
+                    }}>
+                      <div style={{
+                        width: 56, height: 56, borderRadius: 12,
+                        background: AIRLINE_COLORS[r.airlineCode] || AIRLINE_COLORS[r.airline] || "#666",
+                        color: "white",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontWeight: 800, fontSize: "0.75rem", letterSpacing: "0.05em",
+                      }}>
+                        {r.airlineCode.slice(0, 2)}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "0.9375rem", fontWeight: 700 }}>
+                          {r.airline} {r.flightNumber ? `· ${r.flightNumber}` : ""}
+                        </p>
+                        <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                          {format(new Date(r.departureDate), "EEE MMM d, h:mm a")} → {format(new Date(r.arrivalDate), "h:mm a")}
+                          · {Math.floor(r.durationMinutes / 60)}h {r.durationMinutes % 60}m
+                          {r.stops > 0 ? ` · ${r.stops} stop${r.stops > 1 ? "s" : ""}` : " · nonstop"}
+                        </p>
+                        <p style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)" }}>{r.originCode} → {r.destinationCode}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <p style={{ fontSize: "1rem", fontWeight: 800 }}>{formatCurrency(r.price)}</p>
+                        <a href={r.bookingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: "0.375rem 0.5rem", minHeight: 32, fontSize: "0.75rem", marginTop: 4 }}>
+                          <Icon name="search" size={12} /><span>Book</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            </>
+          )}
+
+          {searchSource === "mock" && searchResults.length === 0 && !searching && (
+            <GlassCard padding="md" variant="soft">
+              <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", margin: 0 }}>
+                💡 <strong>Tip:</strong> Set <code>AMADEUS_CLIENT_ID</code> and <code>AMADEUS_CLIENT_SECRET</code> in Railway env to enable live flight search. Without keys, results are estimates based on distance + airline base rates.
+              </p>
+            </GlassCard>
+          )}
+        </>
+      )}
+
       {tab === "browse" && (
         <>
-          {/* Filters */}
           <GlassCard padding="md" style={{ marginBottom: "1rem" }}>
             <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }} className="form-grid-2">
               <div>
@@ -140,20 +317,19 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
                 <label className="label">Airline</label>
                 <select className="input" value={airlineFilter} onChange={(e) => setAirlineFilter(e.target.value)}>
                   <option value="">All airlines</option>
-                  {AIRLINES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  {Object.keys(AIRLINE_COLORS).map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
             </div>
           </GlassCard>
 
-          {/* Grouped by show */}
           {groupedByShow.length === 0 ? (
             <GlassCard padding="lg">
               <div className="empty-state">
                 <div className="empty-state-icon">✈️</div>
-                <p style={{ marginBottom: 4 }}>No flight options yet</p>
+                <p style={{ marginBottom: 4 }}>No saved flight options yet</p>
                 <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                  {isAdmin ? "Add flight options via /admin/travel to get started." : "Ask your admin to add flights for upcoming shows."}
+                  {isAdmin ? "Add flight options via /admin/travel." : "Ask your admin to add flights for upcoming shows."}
                 </p>
               </div>
             </GlassCard>
@@ -272,14 +448,13 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
         </GlassCard>
       )}
 
-      {/* Assign modal */}
       {bookModalOption && (
         <AssignModal
           option={bookModalOption}
           users={users.filter((u) => u.role !== "ADMIN" || isAdmin)}
           shows={shows}
           onClose={() => setBookModalOption(null)}
-          onConfirm={(userId) => handleBook(bookModalOption.id, userId)}
+          onConfirm={(uid) => handleBookFlightOption(bookModalOption.id, uid)}
         />
       )}
     </ClientAuthShell>

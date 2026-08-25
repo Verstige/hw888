@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
       role: true,
       managerId: true,
       manager: { select: { id: true, name: true } },
+      city: true,
+      homeAirportCode: true,
       createdAt: true,
     },
     orderBy: { name: "asc" },
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.create({
     data: { name, email, passwordHash, role, managerId: managerId || null },
-    select: { id: true, name: true, email: true, role: true, managerId: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, managerId: true, city: true, homeAirportCode: true, createdAt: true },
   });
 
   return NextResponse.json(user, { status: 201 });
