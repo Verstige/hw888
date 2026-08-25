@@ -126,6 +126,12 @@ function SaleInner() {
       const sale = await res.json();
       setLastSale(sale);
       setStep("done");
+      // Fire confetti + haptic
+      try {
+        const { fireConfetti } = await import("@/app/components/SaleConfetti");
+        fireConfetti();
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(50);
+      } catch {}
       setTimeout(() => reset(), 4500);
     } catch (e) {
       alert("Could not save sale. Try again or use offline mode.");

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const show = await prisma.show.findUnique({
     where: { id: showId },
-    select: { id: true, name: true, location: true, startDate: true, endDate: true, status: true },
+    select: { id: true, name: true, location: true, startDate: true, endDate: true, status: true, revenueGoal: true },
   });
   if (!show) return NextResponse.json({ error: "Show not found" }, { status: 404 });
 

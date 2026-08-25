@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   const { id } = await params;
   const body = await req.json();
-  const { name, location, address, startDate, endDate, isOutdoor, status, notes, managerId, employeeIds } = body;
+  const { name, location, address, startDate, endDate, isOutdoor, status, notes, managerId, employeeIds, revenueGoal } = body;
 
   const existing = await prisma.show.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -45,6 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(status !== undefined && { status }),
       ...(notes !== undefined && { notes }),
       ...(managerId !== undefined && { managerId: managerId || null }),
+      ...(revenueGoal !== undefined && { revenueGoal: revenueGoal ? Number(revenueGoal) : null }),
     },
   });
 

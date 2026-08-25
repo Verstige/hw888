@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 import { OfflineSyncIndicator } from "./OfflineSyncIndicator";
 import { AppLaunchpad, AppDrawer } from "./AppLauncher";
+import { SaleConfetti, PWAInstallPrompt } from "./SaleConfetti";
 import { logoutAction } from "@/app/login/actions";
 
 type SiteShellProps = {
@@ -85,6 +86,8 @@ export function SiteShell({
       <OfflineSyncIndicator />
       <AppLaunchpad role={user.role} />
       <AppDrawer role={user.role} />
+      <SaleConfetti />
+      <PWAInstallPrompt />
     </div>
   );
 }

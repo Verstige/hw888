@@ -41,6 +41,7 @@ const ADMIN_LINKS: AppLink[] = [
   { href: "/admin/import/sales", label: "Import Sales", icon: "package", shortLabel: "Import" },
   { href: "/admin/travel", label: "Manage Travel", icon: "plane", shortLabel: "Flights" },
   { href: "/admin/directory", label: "Directory", icon: "search", shortLabel: "Dir" },
+  { href: "/admin/map", label: "Show map", icon: "circle", shortLabel: "Map" },
 ];
 
 const EMPLOYEE_LINKS: AppLink[] = [

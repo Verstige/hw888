@@ -16,6 +16,7 @@ type Show = {
   isOutdoor: boolean;
   status: string;
   notes: string | null;
+  revenueGoal?: number | null;
   manager?: { id: string; name: string } | null;
   assignments?: Array<{ id: string; user: { id: string; name: string; role: string } }>;
   _count?: { sales: number };
@@ -51,6 +52,7 @@ export default function AdminShowsClient({
   const [status, setStatus] = useState("UPCOMING");
   const [notes, setNotes] = useState("");
   const [managerId, setManagerId] = useState("");
+  const [revenueGoal, setRevenueGoal] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
 
   const resetForm = () => {
@@ -93,6 +95,7 @@ export default function AdminShowsClient({
         status,
         notes: notes || undefined,
         managerId: managerId || null,
+        revenueGoal: revenueGoal ? Number(revenueGoal) : null,
         employeeIds: selectedEmployees,
       };
 
@@ -427,6 +430,7 @@ export default function AdminShowsClient({
                       setStatus(show.status || "UPCOMING");
                       setNotes(show.notes || "");
                       setManagerId(show.manager?.id || "");
+                      setRevenueGoal(show.revenueGoal?.toString() || "");
                       setSelectedEmployees(show.assignments?.map((a) => a.user.id) || []);
                       setCreating(true);
                     }}
