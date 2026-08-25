@@ -61,9 +61,18 @@ function ShowsInner() {
           <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Shows</h1>
           <p className="section-title-sub" style={{ marginTop: 4 }}>{shows.length} total · grouped by status</p>
         </div>
-        {user?.role === "ADMIN" && (
-          <Link href="/admin/shows" className="btn btn-primary"><Icon name="plus" size={18} /><span>Manage</span></Link>
-        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/shows/calendar" className="btn btn-secondary">
+            <Icon name="calendar" size={16} />
+            <span>Calendar</span>
+          </Link>
+          {user?.role === "ADMIN" && (
+            <Link href="/admin/shows" className="btn btn-primary">
+              <Icon name="plus" size={18} />
+              <span>Manage</span>
+            </Link>
+          )}
+        </div>
       </div>
 
       {shows.length === 0 && (

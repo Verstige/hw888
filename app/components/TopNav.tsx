@@ -17,7 +17,8 @@ export function TopNav({ role }: { role: "ADMIN" | "MANAGER" | "EMPLOYEE" }) {
   const links: TopLink[] = [
     { href: "/dashboard", label: "Home", match: (p) => p === "/dashboard" },
     { href: "/sale", label: "Sale" },
-    { href: "/shows", label: "Shows", match: (p) => p.startsWith("/shows") || p === "/admin/shows" },
+    { href: "/shows", label: "Shows", match: (p) => p.startsWith("/shows") && p !== "/shows/calendar" },
+    { href: "/shows/calendar", label: "Calendar", match: (p) => p === "/shows/calendar" },
     { href: "/leaderboard", label: "Leaderboard" },
     { href: "/travel", label: "Travel" },
   ];

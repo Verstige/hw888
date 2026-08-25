@@ -17,13 +17,13 @@ function buildTabsForRole(role: "ADMIN" | "MANAGER" | "EMPLOYEE"): DockTab[] {
     { href: "/dashboard", label: "Home", icon: "home", match: (p) => p === "/dashboard" },
     { href: "/sale", label: "Sale", icon: "sale" },
     { href: "/shows", label: "Shows", icon: "calendar", match: (p) => p.startsWith("/shows") || p === "/admin/shows" },
+    { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
   ];
 
   if (role === "EMPLOYEE") {
     return [
       ...common,
       { href: "/leaderboard", label: "Stats", icon: "trophy" },
-      { href: "/travel", label: "More", icon: "more", match: (p) => p === "/travel" || p === "/profile" },
     ];
   }
 
@@ -31,7 +31,6 @@ function buildTabsForRole(role: "ADMIN" | "MANAGER" | "EMPLOYEE"): DockTab[] {
     return [
       ...common,
       { href: "/analytics", label: "Analytics", icon: "analytics", match: (p) => p === "/analytics" },
-      { href: "/leaderboard", label: "More", icon: "more", match: (p) => p === "/leaderboard" || p === "/travel" },
     ];
   }
 

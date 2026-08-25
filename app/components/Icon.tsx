@@ -4,6 +4,7 @@ type IconName =
   | "home"
   | "sale"
   | "calendar"
+  | "calendar-grid"
   | "trophy"
   | "more"
   | "analytics"
@@ -253,6 +254,18 @@ export function Icon({ name, className = "", size = 22 }: IconProps) {
       return (
         <svg {...props}>
           <circle cx="12" cy="12" r="9" />
+        </svg>
+      );
+    case "calendar-grid":
+      return (
+        <svg {...props}>
+          <rect x="3" y="4" width="18" height="17" rx="2" />
+          <path d="M3 10h18M8 4v3M16 4v3" />
+          <rect x="6.5" y="13" width="3" height="2.5" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="11" y="13" width="3" height="2.5" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="15.5" y="13" width="2.5" height="2.5" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="6.5" y="16.5" width="3" height="2.5" rx="0.5" fill="currentColor" stroke="none" />
+          <rect x="11" y="16.5" width="3" height="2.5" rx="0.5" fill="currentColor" stroke="none" />
         </svg>
       );
   }
