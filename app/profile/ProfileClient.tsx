@@ -64,9 +64,13 @@ export default function ProfileClient({ user, airports, states, recentSales, att
   const [homeAirportCode, setHomeAirportCode] = useState(user.homeAirportCode || "");
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationSaved, setLocationSaved] = useState(false);
+  const [emailDigest, setEmailDigest] = useState(true);
+  const [savingEmailDigest, setSavingEmailDigest] = useState(false);
+  const [emailDigestSaved, setEmailDigestSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/commission/me").then((r) => r.json()).then((d) => { setBreakdown(d); setLoading(false); }).catch(() => setLoading(false));
+    fetch(`/api/users/${user.id}`).then((r) => r.json()).then((u) => { if (typeof u.emailDigest === "boolean") setEmailDigest(u.emailDigest); }).catch(() => {});
   }, []);
 
   const saveLocation = async () => {
@@ -82,6 +86,22 @@ export default function ProfileClient({ user, airports, states, recentSales, att
       setTimeout(() => setLocationSaved(false), 3000);
     } finally {
       setSavingLocation(false);
+    }
+  };
+
+  const saveEmailDigest = async () => {
+    setSavingEmailDigest(true);
+    setEmailDigestSaved(false);
+    try {
+      await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailDigest }),
+      });
+      setEmailDigestSaved(true);
+      setTimeout(() => setEmailDigestSaved(false), 3000);
+    } finally {
+      setSavingEmailDigest(false);
     }
   };
 
@@ -152,6 +172,31 @@ export default function ProfileClient({ user, airports, states, recentSales, att
           {locationSaved && <span style={{ fontSize: "0.75rem", color: "var(--color-success)", fontWeight: 600 }}>✓ Saved</span>}
           <button onClick={saveLocation} disabled={savingLocation} className="btn btn-primary">
             {savingLocation ? "Saving…" : "Save location"}
+          </button>
+        </div>
+      </GlassCard>
+
+      {/* Email preferences */}
+      <GlassCard padding="md" style={{ marginBottom: "1.25rem" }}>
+        <div className="section-title">
+          <div>
+            <h2>Email preferences</h2>
+            <p className="section-title-sub">Daily digest goes out at 9pm ET</p>
+          </div>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={emailDigest}
+            onChange={(e) => setEmailDigest(e.target.checked)}
+            style={{ width: 18, height: 18 }}
+          />
+          <span style={{ fontSize: "0.9375rem" }}>Receive daily sales digest</span>
+        </label>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+          {emailDigestSaved && <span style={{ fontSize: "0.75rem", color: "var(--color-success)", fontWeight: 600 }}>✓ Saved</span>}
+          <button onClick={saveEmailDigest} disabled={savingEmailDigest} className="btn btn-secondary">
+            {savingEmailDigest ? "Saving…" : "Save"}
           </button>
         </div>
       </GlassCard>

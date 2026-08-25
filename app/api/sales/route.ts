@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getCommissionRate, computeCommission } from "@/lib/commission";
 
-// POST /api/sales — record a sale (uses user's CommissionRate for commission)
+// POST /api/sales — record a sale (uses user's CommissionRate for commission + auto-deducts inventory)
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { baseRate } = await getCommissionRate(userId);
-  // If a discount is applied (preset or manual), commission is calculated on the FINAL price paid
   const numDiscount = Math.max(0, Math.min(Number(discount) || 0, salePrice));
   const finalPrice = Math.max(0, salePrice - numDiscount);
   const commission = computeCommission(finalPrice, baseRate);
@@ -51,6 +50,49 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Auto-deduct inventory: find matching InventoryItem by (managerId, level, model, style)
+  // and decrement quantity by 1. Log an InventoryAdjustment for audit.
+  try {
+    const show = await prisma.show.findUnique({
+      where: { id: showId },
+      select: { managerId: true },
+    });
+    if (show?.managerId) {
+      const inventory = await prisma.inventoryItem.findUnique({
+        where: {
+          managerId_productLevel_productModel_productStyle: {
+            managerId: show.managerId,
+            productLevel,
+            productModel,
+            productStyle,
+          },
+        },
+      });
+      if (inventory) {
+        const newQty = Math.max(0, inventory.quantity - 1);
+        const newStatus = newQty === 0 ? "OUT" : newQty <= inventory.lowStockThreshold ? "LOW" : "OK";
+        await prisma.$transaction([
+          prisma.inventoryItem.update({
+            where: { id: inventory.id },
+            data: { quantity: newQty, status: newStatus },
+          }),
+          prisma.inventoryAdjustment.create({
+            data: {
+              inventoryId: inventory.id,
+              adjustedById: userId,
+              delta: -1,
+              reason: "sale",
+              saleId: sale.id,
+            },
+          }),
+        ]);
+      }
+    }
+  } catch (e) {
+    // Don't fail the sale if inventory deduct fails — log and continue
+    console.error("inventory deduct failed:", e);
+  }
+
   return NextResponse.json(sale, { status: 201 });
 }
 
@@ -65,7 +107,7 @@ export async function GET(req: NextRequest) {
   const showId = searchParams.get("showId");
   const userIdFilter = searchParams.get("userId");
   const paymentType = searchParams.get("paymentType");
-  const range = searchParams.get("range"); // today, 3d, 7d, 14d, 30d, 60d, all
+  const range = searchParams.get("range");
   const limit = parseInt(searchParams.get("limit") || "100");
   const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -75,7 +117,6 @@ export async function GET(req: NextRequest) {
   if (userIdFilter) where.userId = userIdFilter;
   if (paymentType) where.paymentType = paymentType;
 
-  // Role-based filtering
   if (userRole === "EMPLOYEE") {
     where.userId = userId;
   } else if (userRole === "MANAGER") {
@@ -86,7 +127,6 @@ export async function GET(req: NextRequest) {
     where.userId = { in: [userId, ...teamIds.map((t: { id: string }) => t.id)] };
   }
 
-  // Date range filter
   if (range && range !== "all") {
     const now = new Date();
     let startDate: Date;

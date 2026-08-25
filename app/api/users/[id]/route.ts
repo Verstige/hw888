@@ -40,8 +40,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const allowed = userRole === "ADMIN"
-    ? ["name", "email", "role", "managerId", "isActive", "city", "homeAirportCode"]
-    : ["name", "city", "homeAirportCode"]; // users can set their own location
+    ? ["name", "email", "role", "managerId", "isActive", "city", "homeAirportCode", "emailDigest"]
+    : ["name", "city", "homeAirportCode", "emailDigest"]; // users can set their own location + email prefs
 
   const data: any = {};
   for (const key of allowed) {

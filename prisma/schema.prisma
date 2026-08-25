@@ -78,6 +78,7 @@ model User {
   isActive        Boolean  @default(true)
   city            String?  // free-text — "Orlando", "LA", etc.
   homeAirportCode String?  // 3-letter IATA — "MCO", "LAX"
+  emailDigest     Boolean  @default(true)  // receive daily sales digest
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -91,9 +92,13 @@ model User {
   groceryItemsAdded  GroceryItem[]   @relation("AddedBy")
   groceryItemsPurchased GroceryItem[] @relation("PurchasedBy")
   managedShows       Show[]            @relation("ManagerShows")
-  cashDrawers        CashDrawer[]
+  cashDrawers        CashDrawer[]    @relation("DrawerOpener")
+  cashDrawersClosed  CashDrawer[]    @relation("DrawerCloser")
   commissionRate     CommissionRate?
-  adjustmentsMade    SaleAdjustment[] @relation("SaleAdjuster")
+  adjustmentsMade    SaleAdjustment[]      @relation("SaleAdjuster")
+  inventoryAdjustments InventoryAdjustment[] @relation("InventoryAdjuster")
+  ownedCustomers     Customer[]            @relation("CustomerOwner")
+  shippingOrders     ShippingOrder[]       @relation("ShippingCreator")
 
   @@index([managerId])
   @@index([role])
@@ -154,8 +159,8 @@ model ShowAssignment {
   userId     String
   assignedAt DateTime @default(now())
 
-  show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show         Show         @relation(fields: [showId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([showId, userId])
   @@index([userId])
@@ -167,18 +172,26 @@ model CashDrawer {
   id              String    @id @default(cuid())
   showId          String
   openedById      String
+  closedById      String?
   openingFloat    Float     @default(0)
   totalCash       Float     @default(0)
   totalCard       Float     @default(0)
   closingBalance  Float?
+  countedCash     Float?     // cash physically counted at close-out
+  countedCard     Float?     // card receipts total at close-out
+  discrepancyCash Float?     // countedCash - (openingFloat + totalCash)
+  discrepancyCard Float?     // countedCard - totalCard
+  closeNotes      String?
   openedAt        DateTime  @default(now())
   closedAt        DateTime?
   isActive        Boolean   @default(true)
 
   show      Show @relation(fields: [showId], references: [id], onDelete: Cascade)
-  openedBy  User @relation(fields: [openedById], references: [id])
+  openedBy  User @relation("DrawerOpener", fields: [openedById], references: [id])
+  closedBy  User? @relation("DrawerCloser", fields: [closedById], references: [id])
 
   @@index([showId])
+  @@index([isActive])
 }
 
 // ─── Sale ─────────────────────────────────────────────────────────────────────
@@ -205,8 +218,9 @@ model Sale {
   updatedAt              DateTime     @default(now()) @updatedAt
   syncedAt               DateTime?
 
-  show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show         Show         @relation(fields: [showId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerSale CustomerSale?
   parentSale Sale? @relation("SaleSplit", fields: [parentSaleId], references: [id], onDelete: SetNull)
   childSplits Sale[] @relation("SaleSplit")
   adjustments SaleAdjustment[]
@@ -245,13 +259,33 @@ model InventoryItem {
   productStyle      String
   quantity          Int          @default(0)
   lowStockThreshold Int          @default(5)
+  status            String       @default("OK") // OK | LOW | OUT | DISCONTINUED
   updatedAt         DateTime     @updatedAt
 
   manager User @relation(fields: [managerId], references: [id], onDelete: Cascade)
   show    Show? @relation(fields: [showId], references: [id], onDelete: SetNull)
+  adjustments InventoryAdjustment[]
 
   @@unique([managerId, productLevel, productModel, productStyle])
   @@index([managerId])
+  @@index([status])
+}
+
+model InventoryAdjustment {
+  id           String   @id @default(cuid())
+  inventoryId  String
+  adjustedById String
+  delta        Int      // positive or negative quantity change
+  reason       String   // "sale" | "restock" | "shrinkage" | "manual" | "correction"
+  saleId       String?  // when reason = "sale", link to the sale
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  inventory  InventoryItem @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  adjustedBy User          @relation("InventoryAdjuster", fields: [adjustedById], references: [id])
+
+  @@index([inventoryId])
+  @@index([adjustedById])
 }
 
 // ─── Travel Trip ───────────────────────────────────────────────────────────────
@@ -393,4 +427,95 @@ model GroceryItem {
   purchasedBy User? @relation("PurchasedBy", fields: [purchasedById], references: [id], onDelete: SetNull)
 
   @@index([showId])
+}
+
+
+// ─── Customer (CRM) ───────────────────────────────────────────────────────────
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  city        String?
+  state       String?
+  notes       String?
+  tags        String?
+  ownerId     String
+  source      String   @default("manual")
+  totalSpent  Float    @default(0)
+  visitCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner          User           @relation("CustomerOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  sales          CustomerSale[]
+  shippingOrders ShippingOrder[]
+
+  @@index([ownerId])
+  @@index([email])
+  @@index([phone])
+  @@index([name])
+}
+
+model CustomerSale {
+  id         String   @id @default(cuid())
+  customerId String
+  saleId     String   @unique
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+// ─── Shipping Order ────────────────────────────────────────────────────────────
+
+model ShippingOrder {
+  id               String         @id @default(cuid())
+  trackingNumber   String?        @unique
+  carrier          String         @default("USPS")
+  status           String         @default("NEW")
+  customerId       String?
+  recipientName    String
+  recipientEmail   String?
+  recipientPhone   String?
+  addressLine1     String
+  addressLine2     String?
+  city             String
+  state            String
+  postalCode       String
+  country          String         @default("US")
+  items            String
+  notes            String?
+  shippingCost     Float          @default(0)
+  createdById      String
+  createdAt        DateTime       @default(now())
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  updatedAt        DateTime       @updatedAt
+
+  customer  Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy User      @relation("ShippingCreator", fields: [createdById], references: [id])
+  events    ShippingEvent[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model ShippingEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  status      String
+  location    String?
+  description String
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  order ShippingOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }

@@ -4,6 +4,8 @@ import { BottomDock } from "./BottomDock";
 import { TopNav } from "./TopNav";
 import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
+import { OfflineSyncIndicator } from "./OfflineSyncIndicator";
+import { AppLaunchpad, AppDrawer } from "./AppLauncher";
 import { logoutAction } from "@/app/login/actions";
 
 type SiteShellProps = {
@@ -80,6 +82,9 @@ export function SiteShell({
       <main className="shell-main">{children}</main>
 
       {showDock && <BottomDock role={user.role} />}
+      <OfflineSyncIndicator />
+      <AppLaunchpad role={user.role} />
+      <AppDrawer role={user.role} />
     </div>
   );
 }
