@@ -25,6 +25,7 @@ const COMMON_LINKS: AppLink[] = [
 const MANAGER_LINKS: AppLink[] = [
   { href: "/analytics", label: "Analytics", icon: "analytics", shortLabel: "Stats" },
   { href: "/reports", label: "Reports", icon: "search", shortLabel: "Reports" },
+  { href: "/timeclock", label: "Time clock", icon: "circle", shortLabel: "Clock" },
   { href: "/travel", label: "Travel", icon: "plane", shortLabel: "Travel" },
   { href: "/profile", label: "Profile", icon: "users", shortLabel: "Me" },
 ];

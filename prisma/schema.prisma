@@ -97,6 +97,7 @@ model User {
   commissionRate     CommissionRate?
   adjustmentsMade    SaleAdjustment[]      @relation("SaleAdjuster")
   refundsProcessed   Sale[]                @relation("SaleRefunder")
+  timeEntries        TimeClock[]
   inventoryAdjustments InventoryAdjustment[] @relation("InventoryAdjuster")
   ownedCustomers     Customer[]            @relation("CustomerOwner")
   shippingOrders     ShippingOrder[]       @relation("ShippingCreator")
@@ -145,6 +146,7 @@ model Show {
   cashDrawers     CashDrawer[]
   inventoryItems  InventoryItem[]
   travelTrips     TravelTrip[]
+  timeEntries     TimeClock[]
   equipmentTasks  EquipmentTask[]
   groceryItems    GroceryItem[]
   flightOptions   FlightOption[]
@@ -525,4 +527,28 @@ model ShippingEvent {
   order ShippingOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+}
+
+
+// ─── Time Clock / Attendance ────────────────────────────────────────────────────
+
+model TimeClock {
+  id         String    @id @default(cuid())
+  userId     String
+  showId     String?
+  clockIn    DateTime  @default(now())
+  clockOut   DateTime?
+  breakStart DateTime?
+  breakEnd   DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  show Show? @relation(fields: [showId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([showId])
+  @@index([clockIn])
+  @@index([clockOut])
 }
