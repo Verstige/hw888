@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { ClientAuthShell } from "@/app/components/ClientAuthShell";
 import { GlassCard } from "@/app/components/GlassCard";
 import { Icon } from "@/app/components/Icon";
@@ -79,10 +80,16 @@ export default function AdminSalesPage() {
           <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Sales</h1>
           <p className="section-title-sub" style={{ marginTop: 4 }}>{totals.count} transaction{totals.count !== 1 ? "s" : ""}</p>
         </div>
-        <button onClick={exportCSV} className="btn btn-secondary" disabled={sales.length === 0}>
-          <Icon name="search" size={16} />
-          <span>Export CSV</span>
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/admin/import/sales" className="btn btn-secondary">
+            <Icon name="plus" size={16} />
+            <span>Import</span>
+          </Link>
+          <button onClick={exportCSV} className="btn btn-secondary" disabled={sales.length === 0}>
+            <Icon name="search" size={16} />
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* Totals row — pinned to top for visibility */}

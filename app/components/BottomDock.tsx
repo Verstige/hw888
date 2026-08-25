@@ -30,7 +30,7 @@ function buildTabsForRole(role: "ADMIN" | "MANAGER" | "EMPLOYEE"): DockTab[] {
   if (role === "MANAGER") {
     return [
       ...common,
-      { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+      { href: "/reports", label: "Reports", icon: "analytics", match: (p) => p === "/reports" },
       { href: "/profile", label: "Profile", icon: "users", match: (p) => p === "/profile" },
     ];
   }
@@ -38,7 +38,7 @@ function buildTabsForRole(role: "ADMIN" | "MANAGER" | "EMPLOYEE"): DockTab[] {
   // ADMIN
   return [
     ...common,
-    { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+    { href: "/reports", label: "Reports", icon: "analytics", match: (p) => p === "/reports" },
     { href: "/profile", label: "Profile", icon: "users", match: (p) => p === "/profile" },
   ];
 }

@@ -24,6 +24,7 @@ export function TopNav({ role }: { role: "ADMIN" | "MANAGER" | "EMPLOYEE" }) {
   ];
 
   if (role === "ADMIN" || role === "MANAGER") {
+    links.push({ href: "/reports", label: "Reports", match: (p) => p === "/reports" });
     links.push({ href: "/analytics", label: "Analytics", match: (p) => p === "/analytics" });
   }
 

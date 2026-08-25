@@ -90,6 +90,7 @@ model User {
   managedShows       Show[]            @relation("ManagerShows")
   cashDrawers        CashDrawer[]
   commissionRate     CommissionRate?
+  adjustmentsMade    SaleAdjustment[] @relation("SaleAdjuster")
 
   @@index([managerId])
   @@index([role])
@@ -189,15 +190,40 @@ model Sale {
   commissionRateSnapshot Float        @default(0.30) // rate that was applied (for audit)
   isOffline              Boolean      @default(false)
   offlineSynced          Boolean      @default(false)
+  source                 String       @default("pos") // pos | import | adjustment | split
+  parentSaleId           String?      // when source = split, points to original
+  notes                  String?
   createdAt              DateTime     @default(now())
   syncedAt               DateTime?
+  updatedAt              DateTime     @updatedAt
 
   show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentSale Sale? @relation("SaleSplit", fields: [parentSaleId], references: [id], onDelete: SetNull)
+  childSplits Sale[] @relation("SaleSplit")
+  adjustments SaleAdjustment[]
 
   @@index([showId])
   @@index([userId])
   @@index([createdAt])
+  @@index([parentSaleId])
+}
+
+model SaleAdjustment {
+  id           String   @id @default(cuid())
+  saleId       String
+  adjustedById String
+  field        String   // "salePrice" | "paymentType" | "userId" | "showId" | "deleted" | "created"
+  oldValue     String?
+  newValue     String?
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  sale       Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  adjustedBy User @relation("SaleAdjuster", fields: [adjustedById], references: [id])
+
+  @@index([saleId])
+  @@index([adjustedById])
 }
 
 // ─── Inventory Item ────────────────────────────────────────────────────────────
