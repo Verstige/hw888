@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ClientAuthShell } from "@/app/components/ClientAuthShell";
+import { GlassCard } from "@/app/components/GlassCard";
+import { Icon } from "@/app/components/Icon";
 import { formatCurrency } from "@/lib/products";
 
-export default function AdminGroceryPage() {
+function GroceryInner() {
   const [items, setItems] = useState<any[]>([]);
   const [shows, setShows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,29 +16,19 @@ export default function AdminGroceryPage() {
   const load = () => {
     const url = filterShow ? `/api/grocery?showId=${filterShow}` : "/api/grocery";
     fetch(url).then((r) => r.json()).then((d) => { setItems(d); setLoading(false); });
-    fetch("/api/shows?status=ACTIVE").then((r) => r.json()).then((d) => setShows(d));
+    fetch("/api/shows").then((r) => r.json()).then((d) => setShows(d));
   };
-
   useEffect(() => { load(); }, [filterShow]);
 
   const addItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.trim()) return;
-    await fetch("/api/grocery", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ showId: filterShow, item: newItem }),
-    });
-    setNewItem("");
-    load();
+    await fetch("/api/grocery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ showId: filterShow, item: newItem }) });
+    setNewItem(""); load();
   };
 
   const togglePurchased = async (id: string, currentStatus: string) => {
-    await fetch(`/api/grocery/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: currentStatus === "PURCHASED" ? "PENDING" : "PURCHASED" }),
-    });
+    await fetch(`/api/grocery/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: currentStatus === "PURCHASED" ? "PENDING" : "PURCHASED" }) });
     load();
   };
 
@@ -44,93 +37,81 @@ export default function AdminGroceryPage() {
   const totalEstCost = pending.reduce((sum: number, i: any) => sum + (i.estimatedCost || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <header className="bg-[var(--color-primary)] text-white px-6 py-5">
-        <h1 className="text-xl font-bold">🥗 Grocery List</h1>
-        <p className="text-sm opacity-80 mt-0.5">Cost-effective meals for show crew</p>
-      </header>
+    <>
+      <div style={{ marginBottom: "1rem" }}>
+        <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Grocery</h1>
+        <p className="section-title-sub" style={{ marginTop: 4 }}>Show crew meals and supplies</p>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-[var(--color-text-muted)]">Show:</label>
-          <select value={filterShow} onChange={(e) => setFilterShow(e.target.value)} className="px-3 py-1.5 border border-[var(--color-border)] rounded-lg text-sm">
-            <option value="">All Shows</option>
+      <GlassCard padding="sm" style={{ marginBottom: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <label className="label" style={{ marginBottom: 0, flexShrink: 0 }}>Show</label>
+          <select value={filterShow} onChange={(e) => setFilterShow(e.target.value)} className="input" style={{ flex: 1 }}>
+            <option value="">All shows</option>
             {shows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
+      </GlassCard>
 
-        {/* Add item */}
-        <form onSubmit={addItem} className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Add grocery item..."
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            className="flex-1 px-3 py-2 border border-[var(--color-border)] rounded-lg"
-          />
-          <button type="submit" className="px-4 py-2 bg-[var(--color-primary)] text-white font-semibold rounded-lg">Add</button>
-        </form>
+      <form onSubmit={addItem} style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
+        <input type="text" placeholder="Add grocery item…" value={newItem} onChange={(e) => setNewItem(e.target.value)} className="input" style={{ flex: 1 }} />
+        <button type="submit" className="btn btn-primary"><Icon name="plus" size={18} /><span>Add</span></button>
+      </form>
 
-        {/* Estimated cost */}
-        {totalEstCost > 0 && (
-          <div className="text-right text-sm text-[var(--color-text-muted)]">
-            Estimated total: <span className="font-medium text-[var(--color-text)]">{formatCurrency(totalEstCost)}</span>
+      {totalEstCost > 0 && (
+        <GlassCard padding="sm" style={{ marginBottom: "1rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Estimated total</span>
+            <span style={{ fontWeight: 700, color: "var(--color-secondary-dark)" }}>{formatCurrency(totalEstCost)}</span>
           </div>
-        )}
+        </GlassCard>
+      )}
 
-        {loading ? (
-          <div className="text-center py-12 text-[var(--color-text-muted)]">Loading...</div>
-        ) : items.length === 0 && !filterShow ? (
-          <div className="card text-center py-12 text-[var(--color-text-muted)]">No grocery items yet. Add items above.</div>
-        ) : (
-          <>
-            {/* Pending */}
-            {pending.length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
-                  To Buy ({pending.length})
-                </h2>
-                <div className="space-y-1">
-                  {pending.map((item: any) => (
-                    <div key={item.id} className="card flex items-center gap-3 py-2">
-                      <button
-                        onClick={() => togglePurchased(item.id, item.status)}
-                        className="w-5 h-5 rounded border border-[var(--color-border)] flex-shrink-0"
-                      />
-                      <span className="flex-1 text-sm">{item.item}</span>
-                      {item.quantity && <span className="text-xs text-[var(--color-text-muted)]">{item.quantity}</span>}
-                      {item.estimatedCost && <span className="text-xs text-[var(--color-secondary)]">{formatCurrency(item.estimatedCost)}</span>}
-                      {item.show && <span className="text-xs text-[var(--color-text-muted)]">{item.show.name}</span>}
+      {loading ? (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--color-text-muted)" }}>Loading…</div>
+      ) : items.length === 0 && !filterShow ? (
+        <GlassCard padding="lg"><div className="empty-state"><div className="empty-state-icon">🥗</div>No grocery items yet</div></GlassCard>
+      ) : (
+        <>
+          {pending.length > 0 && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div className="section-title"><h2>To buy ({pending.length})</h2></div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {pending.map((item: any) => (
+                  <GlassCard key={item.id} padding="sm">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button onClick={() => togglePurchased(item.id, item.status)} style={{ width: 22, height: 22, borderRadius: 6, border: "2px solid var(--color-border)", background: "transparent", cursor: "pointer", flexShrink: 0 }} aria-label="Mark purchased" />
+                      <span style={{ flex: 1, fontSize: "0.9375rem" }}>{item.item}</span>
+                      {item.quantity && <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>{item.quantity}</span>}
+                      {item.estimatedCost && <span style={{ fontSize: "0.75rem", color: "var(--color-secondary-dark)", fontWeight: 600 }}>{formatCurrency(item.estimatedCost)}</span>}
+                      {item.show && <span style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)" }}>· {item.show.name}</span>}
                     </div>
-                  ))}
-                </div>
+                  </GlassCard>
+                ))}
               </div>
-            )}
-
-            {/* Purchased */}
-            {purchased.length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">
-                  Purchased ({purchased.length})
-                </h2>
-                <div className="space-y-1">
-                  {purchased.map((item: any) => (
-                    <div key={item.id} className="card flex items-center gap-3 py-2 opacity-60">
-                      <button
-                        onClick={() => togglePurchased(item.id, item.status)}
-                        className="w-5 h-5 rounded bg-[var(--color-success)] border border-[var(--color-success)] flex-shrink-0 flex items-center justify-center text-white text-xs"
-                      >
-                        ✓
-                      </button>
-                      <span className="flex-1 text-sm line-through">{item.item}</span>
+            </div>
+          )}
+          {purchased.length > 0 && (
+            <div>
+              <div className="section-title"><h2>Purchased ({purchased.length})</h2></div>
+              <div style={{ display: "grid", gap: 6, opacity: 0.6 }}>
+                {purchased.map((item: any) => (
+                  <GlassCard key={item.id} padding="sm">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button onClick={() => togglePurchased(item.id, item.status)} style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg, var(--color-success) 0%, #3FA562 100%)", border: "none", color: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }} aria-label="Mark pending"><Icon name="check" size={14} /></button>
+                      <span style={{ flex: 1, fontSize: "0.9375rem", textDecoration: "line-through" }}>{item.item}</span>
                     </div>
-                  ))}
-                </div>
+                  </GlassCard>
+                ))}
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            </div>
+          )}
+        </>
+      )}
+    </>
   );
+}
+
+export default function AdminGroceryPage() {
+  return <ClientAuthShell pageTitle="Grocery"><GroceryInner /></ClientAuthShell>;
 }

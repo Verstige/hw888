@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "HW888",
   },
 };
@@ -21,8 +21,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  themeColor: "#2D5A3D",
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  themeColor: "#0F1A14",
 };
 
 export default function RootLayout({
@@ -31,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} min-h-screen flex flex-col`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable}`}>
         {children}
       </body>
     </html>

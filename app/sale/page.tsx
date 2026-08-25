@@ -2,12 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ClientAuthShell } from "@/app/components/ClientAuthShell";
+import { GlassCard } from "@/app/components/GlassCard";
+import { Icon } from "@/app/components/Icon";
 import { PRODUCT_LEVELS, PRODUCT_MODELS, PRODUCT_STYLES, calculateCommission, formatCurrency } from "@/lib/products";
 import type { ProductLevel } from "@/lib/products";
 
-export default function SalePage() {
+type Step = "level" | "model" | "style" | "payment" | "done";
+
+function SaleInner() {
   const router = useRouter();
-  const [step, setStep] = useState<"level" | "model" | "style" | "payment" | "done">("level");
+  const [step, setStep] = useState<Step>("level");
   const [selectedLevel, setSelectedLevel] = useState<ProductLevel | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -19,7 +25,6 @@ export default function SalePage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSale, setLastSale] = useState<any>(null);
 
-  // Check active show and online status
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -47,15 +52,13 @@ export default function SalePage() {
 
   const level = selectedLevel ? PRODUCT_LEVELS[selectedLevel] : null;
 
-  const handleSale = async () => {
+  const handleSale = useCallback(async () => {
     if (!selectedLevel || !selectedModel || !selectedStyle || !paymentType) return;
     if (!activeShowId) {
       alert("No active show selected. Please open a cash drawer first.");
       return;
     }
-
     setIsSubmitting(true);
-
     const saleData = {
       showId: activeShowId,
       productLevel: selectedLevel,
@@ -65,7 +68,6 @@ export default function SalePage() {
       paymentType,
       isOffline: !isOnline,
     };
-
     try {
       if (isOnline) {
         const res = await fetch("/api/sales", {
@@ -77,7 +79,6 @@ export default function SalePage() {
         const sale = await res.json();
         setLastSale(sale);
       } else {
-        // Queue offline
         const { queueSale } = await import("@/lib/offline");
         const pendingSale = {
           id: crypto.randomUUID(),
@@ -88,12 +89,11 @@ export default function SalePage() {
           synced: false,
         };
         await queueSale(pendingSale);
-        setPendingCount((c: number) => c + 1);
+        setPendingCount((c) => c + 1);
         setLastSale({ ...pendingSale, _offline: true });
       }
       setStep("done");
     } catch (err) {
-      // Queue as fallback
       try {
         const { queueSale } = await import("@/lib/offline");
         const pendingSale = {
@@ -105,14 +105,14 @@ export default function SalePage() {
           synced: false,
         };
         await queueSale(pendingSale);
-        setPendingCount((c: number) => c + 1);
+        setPendingCount((c) => c + 1);
         setLastSale({ ...pendingSale, _offline: true });
         setStep("done");
       } catch {}
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [selectedLevel, selectedModel, selectedStyle, paymentType, activeShowId, level, isOnline]);
 
   const resetSale = () => {
     setStep("level");
@@ -125,217 +125,180 @@ export default function SalePage() {
 
   if (!activeShowId) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center px-4">
-        <div className="card max-w-sm w-full text-center">
-          <div className="text-4xl mb-3">📋</div>
-          <h2 className="text-lg font-bold mb-2">No Active Cash Drawer</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            You need to open a cash drawer for a show before recording sales.
-          </p>
-          <button
-            onClick={() => router.push("/shows")}
-            className="w-full py-2.5 bg-[var(--color-primary)] text-white font-semibold rounded-lg"
-          >
-            Go to Shows
-          </button>
-        </div>
-      </div>
+      <GlassCard padding="lg" style={{ maxWidth: 360, margin: "4rem auto", textAlign: "center" }}>
+        <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>📋</div>
+        <h2 style={{ fontSize: "1.125rem", fontWeight: 700, marginBottom: 4 }}>No active cash drawer</h2>
+        <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+          You need to open a cash drawer for a show before recording sales.
+        </p>
+        <Link href="/shows" className="btn btn-primary btn-block">
+          <Icon name="calendar" size={18} />
+          <span>Go to shows</span>
+        </Link>
+      </GlassCard>
     );
   }
 
+  const steps: Step[] = ["level", "model", "style", "payment", "done"];
+  const currentIdx = steps.indexOf(step);
+
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
-      {/* Offline indicator */}
+    <>
       {!isOnline && (
-        <div className="offline-badge bg-[var(--color-warning)]">
-          Offline — Sale Queued
+        <div className="offline-badge">
+          <span>Offline · sale queued</span>
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-[var(--color-primary)] text-white px-4 py-4">
-        <div className="flex items-center justify-between">
+      <GlassCard padding="md" variant="strong" style={{ marginBottom: "0.875rem", background: "linear-gradient(135deg, rgba(45, 90, 61, 0.95) 0%, rgba(31, 63, 42, 0.95) 100%)", color: "white", border: "1px solid rgba(255, 255, 255, 0.10)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p className="text-xs opacity-80">Recording for</p>
-            <h1 className="font-bold">{activeShow?.name || "Active Show"}</h1>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.7 }}>Recording for</p>
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 700, marginTop: 2 }}>{activeShow?.name || "Active Show"}</h2>
           </div>
           {pendingCount > 0 && (
-            <div className="text-right">
-              <p className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                {pendingCount} queued
-              </p>
-            </div>
+            <span className="badge" style={{ background: "rgba(255, 255, 255, 0.18)", color: "white", borderColor: "rgba(255, 255, 255, 0.20)" }}>{pendingCount} queued</span>
           )}
         </div>
-      </header>
+      </GlassCard>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-1 px-4 py-3 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
-        {(["level", "model", "style", "payment", "done"] as const).map((s, i) => (
-          <div key={s} className="flex items-center gap-1">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === s ? "bg-[var(--color-primary)] text-white" : i < ["level", "model", "style", "payment", "done"].indexOf(step) ? "bg-[var(--color-success)] text-white" : "bg-[var(--color-border)] text-[var(--color-text-muted)]"}`}>
-              {i + 1}
+      <div className="step-indicator" style={{ marginBottom: "1rem" }}>
+        {steps.map((s, i) => (
+          <div key={s} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div className={`step-bubble ${i === currentIdx ? "step-bubble-active" : i < currentIdx ? "step-bubble-done" : ""}`}>
+              {i < currentIdx ? <Icon name="check" size={14} /> : i + 1}
             </div>
-            {i < 4 && <div className={`w-6 h-0.5 ${i < ["level", "model", "style", "payment", "done"].indexOf(step) ? "bg-[var(--color-success)]" : "bg-[var(--color-border)]"}`} />}
+            {i < steps.length - 1 && <div className={`step-line ${i < currentIdx ? "step-line-done" : ""}`} />}
           </div>
         ))}
       </div>
 
-      <div className="flex-1 px-4 py-6 space-y-6 max-w-lg mx-auto w-full">
-        {/* STEP 1: Level */}
-        {step === "level" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-center">Select Bracelet Level</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {(Object.entries(PRODUCT_LEVELS) as [ProductLevel, typeof PRODUCT_LEVELS[ProductLevel]][]).map(([key, val]) => (
-                <button
-                  key={key}
-                  onClick={() => { setSelectedLevel(key); setStep("model"); }}
-                  className="card text-center hover:border-[var(--color-primary)] hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="text-xs font-bold text-[var(--color-primary)] mb-1">LEVEL {val.label}</div>
-                  <div className="text-xl font-bold">{formatCurrency(val.retail)}</div>
-                  <div className="text-xs text-[var(--color-text-muted)] mt-1">You earn {formatCurrency(val.commission)}</div>
-                </button>
-              ))}
-            </div>
+      {step === "level" && (
+        <div style={{ display: "grid", gap: 12 }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, textAlign: "center", marginBottom: 4 }}>Select bracelet level</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {(Object.entries(PRODUCT_LEVELS) as [ProductLevel, typeof PRODUCT_LEVELS[ProductLevel]][]).map(([key, val]) => (
+              <GlassCard key={key} interactive padding="md" onClick={() => { setSelectedLevel(key); setStep("model"); }} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "0.6875rem", fontWeight: 800, color: "var(--color-primary)", marginBottom: 4, letterSpacing: "0.06em" }}>LEVEL {val.label}</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em" }}>{formatCurrency(val.retail)}</div>
+                <div style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)", marginTop: 4 }}>You earn {formatCurrency(val.commission)}</div>
+              </GlassCard>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* STEP 2: Model */}
-        {step === "model" && selectedLevel && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button onClick={() => setStep("level")} className="text-sm text-[var(--color-primary)]">← Back</button>
-              <p className="text-sm text-[var(--color-text-muted)]">Level {PRODUCT_LEVELS[selectedLevel].label}</p>
-            </div>
-            <h2 className="text-lg font-bold text-center">Select Model</h2>
-            <div className="space-y-2">
-              {PRODUCT_MODELS[selectedLevel].map((model) => (
-                <button
-                  key={model}
-                  onClick={() => { setSelectedModel(model); setStep("style"); }}
-                  className="card w-full text-left hover:border-[var(--color-primary)] hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="font-semibold">{model}</div>
-                </button>
-              ))}
-            </div>
+      {step === "model" && selectedLevel && (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button onClick={() => setStep("level")} className="btn btn-ghost" style={{ minHeight: 36, padding: "0.375rem 0.625rem" }}>
+              <Icon name="arrow-left" size={16} /><span>Back</span>
+            </button>
+            <span className="badge badge-primary">Level {PRODUCT_LEVELS[selectedLevel].label}</span>
           </div>
-        )}
-
-        {/* STEP 3: Style */}
-        {step === "style" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button onClick={() => setStep("model")} className="text-sm text-[var(--color-primary)]">← Back</button>
-              <p className="text-sm text-[var(--color-text-muted)]">{selectedModel}</p>
-            </div>
-            <h2 className="text-lg font-bold text-center">Select Style</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {PRODUCT_STYLES.map((style) => (
-                <button
-                  key={style}
-                  onClick={() => { setSelectedStyle(style); setStep("payment"); }}
-                  className="card text-center hover:border-[var(--color-primary)] hover:shadow-md transition-all cursor-pointer py-3"
-                >
-                  <div className="text-sm font-medium">{style}</div>
-                </button>
-              ))}
-            </div>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, textAlign: "center", marginBottom: 4 }}>Select model</h2>
+          <div style={{ display: "grid", gap: 8 }}>
+            {PRODUCT_MODELS[selectedLevel].map((model) => (
+              <GlassCard key={model} interactive padding="md" onClick={() => { setSelectedModel(model); setStep("style"); }}>
+                <p style={{ fontWeight: 600 }}>{model}</p>
+              </GlassCard>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* STEP 4: Payment */}
-        {step === "payment" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button onClick={() => setStep("style")} className="text-sm text-[var(--color-primary)]">← Back</button>
-            </div>
-            <h2 className="text-lg font-bold text-center">Payment Method</h2>
-
-            {/* Order summary */}
-            <div className="card bg-[var(--color-bg-dark)]">
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-[var(--color-text-muted)]">Level</span>
-                <span className="text-sm font-bold">{PRODUCT_LEVELS[selectedLevel!].label}</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-[var(--color-text-muted)]">Model</span>
-                <span className="text-sm font-medium">{selectedModel}</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-[var(--color-text-muted)]">Style</span>
-                <span className="text-sm font-medium">{selectedStyle}</span>
-              </div>
-              <hr className="my-2 border-[var(--color-border)]" />
-              <div className="flex justify-between mb-1">
-                <span className="text-sm text-[var(--color-text-muted)]">Sale Price</span>
-                <span className="font-bold">{formatCurrency(level!.retail)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-[var(--color-text-muted)]">Your Commission (30%)</span>
-                <span className="text-sm font-bold text-[var(--color-secondary)]">{formatCurrency(level!.commission)}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {(["CASH", "CARD"] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => { setPaymentType(type); handleSale(); }}
-                  disabled={isSubmitting}
-                  className="card text-center hover:border-[var(--color-primary)] hover:shadow-md transition-all cursor-pointer py-6"
-                >
-                  <div className="text-3xl mb-2">{type === "CASH" ? "💵" : "💳"}</div>
-                  <div className="font-bold">{type === "CASH" ? "Cash" : "Card"}</div>
-                </button>
-              ))}
-            </div>
+      {step === "style" && (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button onClick={() => setStep("model")} className="btn btn-ghost" style={{ minHeight: 36, padding: "0.375rem 0.625rem" }}>
+              <Icon name="arrow-left" size={16} /><span>Back</span>
+            </button>
+            <span className="badge badge-primary">{selectedModel}</span>
           </div>
-        )}
-
-        {/* STEP 5: Done */}
-        {step === "done" && lastSale && (
-          <div className="space-y-4 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            {lastSale._offline && (
-              <div className="bg-[var(--color-warning)]/10 text-[var(--color-warning)] text-sm px-3 py-2 rounded-lg">
-                Offline — sale queued and will sync when back online
-              </div>
-            )}
-            <div>
-              <p className="text-sm text-[var(--color-text-muted)]">Sale recorded</p>
-              <h2 className="text-2xl font-bold">{PRODUCT_LEVELS[selectedLevel!].label} — {selectedModel}</h2>
-              <p className="text-[var(--color-text-muted)]">{selectedStyle}</p>
-            </div>
-            <div className="card bg-[var(--color-bg-dark)]">
-              <div className="flex justify-between mb-2">
-                <span className="text-[var(--color-text-muted)]">Sale Price</span>
-                <span className="font-bold">{formatCurrency(level!.retail)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Your Commission</span>
-                <span className="font-bold text-[var(--color-secondary)]">+{formatCurrency(level!.commission)}</span>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={resetSale}
-                className="flex-1 py-3 bg-[var(--color-primary)] text-white font-semibold rounded-lg"
-              >
-                New Sale
-              </button>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="flex-1 py-3 border border-[var(--color-border)] text-[var(--color-text)] font-semibold rounded-lg"
-              >
-                Dashboard
-              </button>
-            </div>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, textAlign: "center", marginBottom: 4 }}>Select style</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {PRODUCT_STYLES.map((style) => (
+              <GlassCard key={style} interactive padding="md" onClick={() => { setSelectedStyle(style); setStep("payment"); }} style={{ textAlign: "center" }}>
+                <p style={{ fontWeight: 600, fontSize: "0.875rem" }}>{style}</p>
+              </GlassCard>
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {step === "payment" && (
+        <div style={{ display: "grid", gap: 12 }}>
+          <button onClick={() => setStep("style")} className="btn btn-ghost" style={{ alignSelf: "flex-start", minHeight: 36, padding: "0.375rem 0.625rem" }}>
+            <Icon name="arrow-left" size={16} /><span>Back</span>
+          </button>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, textAlign: "center", marginBottom: 4 }}>Payment method</h2>
+
+          <GlassCard padding="md" variant="soft">
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Level</span><span style={{ fontSize: "0.8125rem", fontWeight: 700 }}>{PRODUCT_LEVELS[selectedLevel!].label}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Model</span><span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{selectedModel}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Style</span><span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{selectedStyle}</span></div>
+              <div className="divider" style={{ margin: "0.5rem 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Sale price</span><span style={{ fontWeight: 700 }}>{formatCurrency(level!.retail)}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Your commission (30%)</span><span style={{ fontWeight: 700, color: "var(--color-secondary-dark)" }}>+{formatCurrency(level!.commission)}</span></div>
+            </div>
+          </GlassCard>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {(["CASH", "CARD"] as const).map((type) => (
+              <GlassCard key={type} interactive padding="lg" onClick={() => { setPaymentType(type); handleSale(); }} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2rem", marginBottom: 6 }}>{type === "CASH" ? "💵" : "💳"}</div>
+                <p style={{ fontWeight: 700 }}>{type === "CASH" ? "Cash" : "Card"}</p>
+              </GlassCard>
+            ))}
+          </div>
+          {isSubmitting && <p style={{ textAlign: "center", fontSize: "0.8125rem", color: "var(--color-text-muted)" }}>Saving…</p>}
+        </div>
+      )}
+
+      {step === "done" && lastSale && (
+        <div style={{ display: "grid", gap: 12, textAlign: "center" }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: "50%",
+            background: "linear-gradient(135deg, var(--color-success) 0%, #3FA562 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "1rem auto",
+            boxShadow: "0 12px 32px rgba(45, 138, 78, 0.40)",
+            color: "white",
+          }}>
+            <Icon name="check" size={40} />
+          </div>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em" }}>Sale recorded!</h2>
+          <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>{PRODUCT_LEVELS[selectedLevel!].label} — {selectedModel} · {selectedStyle}</p>
+
+          {lastSale._offline && (
+            <GlassCard padding="sm" style={{ background: "rgba(212, 146, 42, 0.10)", borderColor: "rgba(212, 146, 42, 0.30)" }}>
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-warning)", fontWeight: 600 }}>Offline — sale queued and will sync when back online</p>
+            </GlassCard>
+          )}
+
+          <GlassCard padding="md" variant="strong">
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--color-text-muted)" }}>Sale price</span><span style={{ fontWeight: 700, fontSize: "1.125rem" }}>{formatCurrency(level!.retail)}</span></div>
+              <div className="divider" style={{ margin: 0 }} />
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--color-text-muted)" }}>Your commission</span><span style={{ fontWeight: 700, color: "var(--color-secondary-dark)", fontSize: "1.125rem" }}>+{formatCurrency(level!.commission)}</span></div>
+            </div>
+          </GlassCard>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
+            <button onClick={resetSale} className="btn btn-primary"><Icon name="plus" size={18} /><span>New sale</span></button>
+            <button onClick={() => router.push("/dashboard")} className="btn btn-secondary"><Icon name="home" size={18} /><span>Dashboard</span></button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function SalePage() {
+  return (
+    <ClientAuthShell pageTitle="Sale" pageSubtitle="Record a sale">
+      <SaleInner />
+    </ClientAuthShell>
   );
 }
