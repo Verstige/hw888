@@ -44,18 +44,21 @@ export async function POST(req: NextRequest) {
       throw new Error(`User ${userId} not found or inactive`);
     }
     const baseRate = rateMap.get(userId) ?? 0.30;
-    const salePrice = Number(s.salePrice);
-    const commission = computeCommission(salePrice, baseRate);
+    const numDiscount = Math.max(0, Math.min(Number(s.discount) || 0, Number(s.salePrice)));
+    const finalPrice = Math.max(0, Number(s.salePrice) - numDiscount);
+    const commission = computeCommission(finalPrice, baseRate);
     return {
       showId,
       userId,
       productLevel: s.productLevel || "LEVEL_1X",
       productModel: s.productModel || "Unknown",
       productStyle: s.productStyle || "Unknown",
-      salePrice,
+      salePrice: finalPrice,
       paymentType: s.paymentType || "CASH",
       commission,
       commissionRateSnapshot: baseRate,
+      discount: numDiscount > 0 ? numDiscount : undefined,
+      discountReason: numDiscount > 0 ? (s.discountReason || undefined) : undefined,
       source: s.source || source,
       notes: s.notes || null,
       createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),

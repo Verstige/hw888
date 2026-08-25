@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/leaderboard?range=7d
+// GET /api/leaderboard?range=today|3d|7d|14d|30d|60d|all
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     case "14d": startDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); break;
     case "30d": startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); break;
     case "60d": startDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); break;
+    case "all": startDate = new Date(0); break;
     default: startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   }
 
@@ -48,6 +49,13 @@ export async function GET(req: NextRequest) {
     orderBy: { _sum: { salePrice: "desc" } },
   });
 
+  // Per-employee base rate (for commission % display)
+  const rates = await prisma.commissionRate.findMany({
+    where: { userId: { in: employeeIds } },
+    select: { userId: true, baseRate: true, managerBonus: true },
+  });
+  const rateMap = new Map(rates.map((r) => [r.userId, r]));
+
   type LeaderboardEntry = {
     rank: number;
     userId: string;
@@ -55,22 +63,48 @@ export async function GET(req: NextRequest) {
     totalSales: number;
     totalCommission: number;
     saleCount: number;
+    baseRate: number;
+    commissionPct: number;
+    avgPerSale: number;
   };
 
-  // Merge with employee names and rank
   const leaderboard: LeaderboardEntry[] = salesData.map((row: { userId: string; _sum: { salePrice: number | null; commission: number | null }; _count: number }, index: number) => {
     const employee = employees.find((e: { id: string }) => e.id === row.userId)!;
+    const totalSales = row._sum.salePrice || 0;
+    const totalCommission = row._sum.commission || 0;
+    const baseRate = rateMap.get(row.userId)?.baseRate ?? 0.30;
+    const commissionPct = totalSales > 0 ? (totalCommission / totalSales) * 100 : 0;
     return {
       rank: index + 1,
       userId: row.userId,
       name: employee.name,
-      totalSales: row._sum.salePrice || 0,
-      totalCommission: row._sum.commission || 0,
+      totalSales,
+      totalCommission,
       saleCount: row._count,
+      baseRate,
+      commissionPct,
+      avgPerSale: totalSales / Math.max(row._count, 1),
     };
   });
 
-  // Find current user's rank
+  // Include employees with zero sales so the leaderboard isn't empty
+  for (const e of employees) {
+    if (!leaderboard.find((l) => l.userId === e.id)) {
+      const baseRate = rateMap.get(e.id)?.baseRate ?? 0.30;
+      leaderboard.push({
+        rank: leaderboard.length + 1,
+        userId: e.id,
+        name: e.name,
+        totalSales: 0,
+        totalCommission: 0,
+        saleCount: 0,
+        baseRate,
+        commissionPct: 0,
+        avgPerSale: 0,
+      });
+    }
+  }
+
   const myRank = leaderboard.findIndex((e: LeaderboardEntry) => e.userId === userId);
 
   return NextResponse.json({

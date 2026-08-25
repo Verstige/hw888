@@ -10,14 +10,17 @@ export async function POST(req: NextRequest) {
 
   const userId = (session.user as any).id;
   const body = await req.json();
-  const { showId, productLevel, productModel, productStyle, salePrice, paymentType, isOffline } = body;
+  const { showId, productLevel, productModel, productStyle, salePrice, paymentType, isOffline, discount, discountReason } = body;
 
   if (!showId || !productLevel || !productModel || !productStyle || !salePrice || !paymentType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const { baseRate } = await getCommissionRate(userId);
-  const commission = computeCommission(salePrice, baseRate);
+  // If a discount is applied (preset or manual), commission is calculated on the FINAL price paid
+  const numDiscount = Math.max(0, Math.min(Number(discount) || 0, salePrice));
+  const finalPrice = Math.max(0, salePrice - numDiscount);
+  const commission = computeCommission(finalPrice, baseRate);
 
   const sale = await prisma.sale.create({
     data: {
@@ -26,10 +29,12 @@ export async function POST(req: NextRequest) {
       productLevel,
       productModel,
       productStyle,
-      salePrice,
+      salePrice: finalPrice,
       paymentType,
       commission,
       commissionRateSnapshot: baseRate,
+      discount: numDiscount > 0 ? numDiscount : undefined,
+      discountReason: numDiscount > 0 ? (discountReason || undefined) : undefined,
       isOffline: !!isOffline,
     },
     include: {
@@ -37,12 +42,12 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Update cash drawer totals
+  // Update cash drawer totals using the FINAL price (what was actually collected)
   await prisma.cashDrawer.updateMany({
     where: { showId, isActive: true },
     data: {
-      ...(paymentType === "CASH" ? { totalCash: { increment: salePrice } } : {}),
-      ...(paymentType === "CARD" ? { totalCard: { increment: salePrice } } : {}),
+      ...(paymentType === "CASH" ? { totalCash: { increment: finalPrice } } : {}),
+      ...(paymentType === "CARD" ? { totalCard: { increment: finalPrice } } : {}),
     },
   });
 

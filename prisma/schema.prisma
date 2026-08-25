@@ -58,6 +58,7 @@ enum TripType {
 
 enum TripStatus {
   PENDING
+  BOOKED
   CONFIRMED
   COMPLETED
   CANCELLED
@@ -135,6 +136,7 @@ model Show {
   travelTrips     TravelTrip[]
   equipmentTasks  EquipmentTask[]
   groceryItems    GroceryItem[]
+  flightOptions   FlightOption[]
 
   @@index([managerId])
   @@index([startDate])
@@ -193,6 +195,8 @@ model Sale {
   source                 String       @default("pos") // pos | import | adjustment | split
   parentSaleId           String?      // when source = split, points to original
   notes                  String?
+  discount               Float        @default(0)   // preset discount ($100/$150) or custom manual
+  discountReason         String?      // why discount was applied (preset name or custom note)
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @default(now()) @updatedAt
   syncedAt               DateTime?
@@ -270,6 +274,29 @@ model TravelTrip {
 
 // ─── Flight Detail ─────────────────────────────────────────────────────────────
 
+// Pre-populated by admin or fetched from amadeus/skyscanner integrations.
+// FlightOption = "this is roughly what flying Frontier/Southwest/Delta costs to get to this show".
+model FlightOption {
+  id              String   @id @default(cuid())
+  showId          String
+  airline         String   // "FRONTIER" | "SOUTHWEST" | "DELTA" | "UNITED" | "AMERICAN" | etc.
+  originCity      String   // departure city (e.g. "DFW", "DEN", "LAX")
+  destinationCity String   // arrival city (matches show location)
+  estimatedCost   Float    // one-way estimate in USD
+  durationMinutes Int?     // flight duration
+  outboundDate    DateTime // when the outbound would depart
+  bookingUrl      String   // deep link to that airline's search
+  isActive        Boolean  @default(true)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
+
+  @@index([showId])
+  @@index([airline])
+}
+
 model FlightDetail {
   id                String @id @default(cuid())
   tripId            String @unique
@@ -280,6 +307,14 @@ model FlightDetail {
   departureTime     DateTime?
   arrivalTime       DateTime?
   confirmationNumber String?
+  returnAirline     String?
+  returnFlightNumber String?
+  returnDepartureTime DateTime?
+  returnArrivalTime DateTime?
+  estimatedCost     Float?    // rough estimate, can be overridden
+  bookingUrl        String?   // direct link to airline booking
+  seatNumber        String?
+  notes             String?
 
   trip TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 }
