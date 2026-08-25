@@ -995,3 +995,18 @@ select.input {
   border-bottom: none;
   color: var(--color-text);
 }
+
+
+/* Dashboard responsive grids */
+.qa-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.625rem; }
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
+.two-col-inner { display: grid; grid-template-columns: 1fr; gap: 0.875rem; }
+
+@media (min-width: 640px) {
+  .qa-grid { grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  .admin-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col-inner { grid-template-columns: 1.4fr 1fr; }
+}
+@media (min-width: 1024px) {
+  .admin-grid { grid-template-columns: repeat(3, 1fr); }
+}
