@@ -19,11 +19,11 @@ async function main() {
   // Create admin user
   const adminPassword = await bcrypt.hash("admin888", 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@holisticworldus.com" },
+    where: { email: "admin@holisticworld888.com" },
     update: {},
     create: {
       name: "Admin",
-      email: "admin@holisticworldus.com",
+      email: "admin@holisticworld888.com",
       passwordHash: adminPassword,
       role: "ADMIN",
     },
@@ -33,11 +33,11 @@ async function main() {
   // Create sample manager
   const managerPassword = await bcrypt.hash("manager888", 12);
   const manager = await prisma.user.upsert({
-    where: { email: "manager@holisticworldus.com" },
+    where: { email: "manager@holisticworld888.com" },
     update: {},
     create: {
       name: "Sarah Manager",
-      email: "manager@holisticworldus.com",
+      email: "manager@holisticworld888.com",
       passwordHash: managerPassword,
       role: "MANAGER",
     },
@@ -47,11 +47,11 @@ async function main() {
   // Create sample employee
   const empPassword = await bcrypt.hash("employee888", 12);
   const emp = await prisma.user.upsert({
-    where: { email: "employee@holisticworldus.com" },
+    where: { email: "employee@holisticworld888.com" },
     update: {},
     create: {
       name: "John Employee",
-      email: "employee@holisticworldus.com",
+      email: "employee@holisticworld888.com",
       passwordHash: empPassword,
       role: "EMPLOYEE",
       managerId: manager.id,
@@ -190,9 +190,9 @@ async function main() {
 
   console.log("\n🎉 Seed complete!");
   console.log("\n📋 Login credentials:");
-  console.log("  Admin:    admin@holisticworldus.com / admin888");
-  console.log("  Manager:  manager@holisticworldus.com / manager888");
-  console.log("  Employee: employee@holisticworldus.com / employee888");
+  console.log("  Admin:    admin@holisticworld888.com / admin888");
+  console.log("  Manager:  manager@holisticworld888.com / manager888");
+  console.log("  Employee: employee@holisticworld888.com / employee888");
 }
 
 main()

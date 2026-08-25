@@ -70,9 +70,9 @@ npm run dev
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@holisticworldus.com | admin888 |
-| Manager | manager@holisticworldus.com | manager888 |
-| Employee | employee@holisticworldus.com | employee888 |
+| Admin | admin@holisticworld888.com | admin888 |
+| Manager | manager@holisticworld888.com | manager888 |
+| Employee | employee@holisticworld888.com | employee888 |
 
 ---
 

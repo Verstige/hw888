@@ -28,7 +28,7 @@ export const PRODUCT_STYLES = [
 
 export type ProductStyle = (typeof PRODUCT_STYLES)[number];
 
-// Men's Bracelet product names from holisticworldus.com
+// Men's Bracelet product names from holisticworld888.com
 export const MENS_PRODUCTS = [
   // 6X
   "Thick Design 6X Black HW",
@@ -51,7 +51,7 @@ export const MENS_PRODUCTS = [
   "Plain Color 2X Bracelet Gold HW",
 ] as const;
 
-// Women's Bracelet product names from holisticworldus.com
+// Women's Bracelet product names from holisticworld888.com
 export const WOMENS_PRODUCTS = [
   // XOXO
   "XoXo Ladies Single Gold Silver HW",

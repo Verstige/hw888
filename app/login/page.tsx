@@ -122,7 +122,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="you@holisticworldus.com"
+                placeholder="you@holisticworld888.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"

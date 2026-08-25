@@ -5,7 +5,7 @@
 
 ## 1. Concept & Vision
 
-HW888 is an all-in-one field sales and operations platform for Holistic World (holisticworldus.com). It powers employees at trade shows — recording sales in real-time, tracking commissions, managing travel logistics, and keeping inventory in sync. The experience is clean, fast, and works offline-first since trade shows often have spotty WiFi.
+HW888 is an all-in-one field sales and operations platform for Holistic World (holisticworld888.com). It powers employees at trade shows — recording sales in real-time, tracking commissions, managing travel logistics, and keeping inventory in sync. The experience is clean, fast, and works offline-first since trade shows often have spotty WiFi.
 
 **Feel:** Professional but warm — earthy tones, clear hierarchy, minimal friction. Admin has full visibility; employees have exactly what they need and nothing they don't.
 
@@ -56,7 +56,7 @@ HW888 is an all-in-one field sales and operations platform for Holistic World (h
 ### Styles (all levels/models)
 Black, Silver, Gold, Copper, Silver/Gold, Rose Gold/Silver, Black/Silver
 
-### Inventory SKUs (from holisticworldus.com)
+### Inventory SKUs (from holisticworld888.com)
 **Men's Bracelets**
 - Thick Design 6X — Black, Silver, Silver Gold, Silver Black, Gold, Black Gold
 - Thick Design 3X — Black, Silver, Silver Gold, Black Gold, Silver Black, Gold, Copper
