@@ -1,6 +1,6 @@
-// Amadeus live flight search wrapper with smart-mock fallback.
-// Set AMADEUS_CLIENT_ID and AMADEUS_CLIENT_SECRET in Railway env to enable live data.
-// Without keys, falls back to a great-circle distance estimator using airline base rates.
+// Kiwi.com (Tequila) live flight search wrapper with smart-mock fallback.
+// Set KIWI_API_KEY in Railway env to enable live data.
+// Without a key, falls back to a great-circle distance estimator using airline base rates.
 
 export type FlightOffer = {
   id: string;
@@ -16,7 +16,7 @@ export type FlightOffer = {
   currency: string;
   stops: number;
   bookingUrl: string;
-  source: "amadeus" | "mock";
+  source: "kiwi" | "mock";
 };
 
 const AIRLINES: Record<string, { name: string; baseRate: number; bookingUrl: (from: string, to: string, date: string) => string }> = {
@@ -165,54 +165,59 @@ export function generateMockOffers(originCode: string, destinationCode: string, 
   return offers.sort((a, b) => a.price - b.price);
 }
 
-// Amadeus live search — only invoked if env vars present
-async function searchAmadeusLive(originCode: string, destinationCode: string, date: string): Promise<FlightOffer[] | null> {
-  const clientId = process.env.AMADEUS_CLIENT_ID;
-  const clientSecret = process.env.AMADEUS_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
+// Kiwi.com Tequila live search — only invoked if env var present
+async function searchKiwiLive(originCode: string, destinationCode: string, date: string): Promise<FlightOffer[] | null> {
+  const apiKey = process.env.KIWI_API_KEY;
+  if (!apiKey) return null;
 
   try {
-    // Get OAuth2 token
-    const tokenRes = await fetch("https://test.api.amadeus.com/v1/security/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-www-form-urlencoded" as any },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
+    // Kiwi Tequila API: v2/search returns one-way flights with prices + booking deeplinks
+    // Docs: https://docs.kiwi.com/
+    const params = new URLSearchParams({
+      fly_from: originCode,
+      fly_to: destinationCode,
+      date_from: date,
+      date_to: date,
+      adults: "1",
+      curr: "USD",
+      limit: "20",
+      sort: "price",
+      asc: "1",
     });
-    if (!tokenRes.ok) return null;
-    const tokenData = await tokenRes.json();
-    const token = tokenData.access_token;
-    if (!token) return null;
-
-    // Search flights
-    const searchRes = await fetch(
-      `https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=${originCode}&destinationLocationCode=${destinationCode}&departureDate=${date}&adults=1&currencyCode=USD&max=20`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!searchRes.ok) return null;
-    const data = await searchRes.json();
+    const url = `https://api.tequila.kiwi.com/v2/search?${params.toString()}`;
+    const res = await fetch(url, {
+      headers: {
+        apikey: apiKey,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
     const offers: FlightOffer[] = [];
     for (const o of (data.data || []).slice(0, 20)) {
-      const seg = o.itineraries[0].segments[0];
-      const durationMin = parseDuration(o.itineraries[0].duration);
+      const seg = o.route?.[0];
+      if (!seg) continue;
+      const lastSeg = o.route[o.route.length - 1];
+      const stops = Math.max(0, o.route.length - 1);
+      const dep = new Date(seg.local_departure);
+      const arr = new Date(lastSeg.local_arrival);
+      const durationMinutes = Math.round((arr.getTime() - dep.getTime()) / 60000);
+      // Kiwi returns deeplinks like "https://www.kiwi.com/deep?..." — use as bookingUrl
       offers.push({
-        id: o.id,
-        airline: seg.carrierCode,
-        airlineCode: seg.carrierCode,
-        flightNumber: `${seg.carrierCode}${seg.number}`,
-        originCode: seg.departure.iataCode,
-        destinationCode: seg.arrival.iataCode,
-        departureDate: seg.departure.at,
-        arrivalDate: seg.arrival.at,
-        durationMinutes: durationMin,
-        price: parseFloat(o.price.total),
-        currency: o.price.currency,
-        stops: o.itineraries[0].segments.length - 1,
-        bookingUrl: `https://www.google.com/search?q=${seg.carrierCode}+${seg.number}+${seg.departure.iataCode}+to+${seg.arrival.iataCode}+${date}`,
-        source: "amadeus",
+        id: String(o.id) || `kiwi-${seg.flight_no}-${dep.getTime()}`,
+        airline: seg.airline || "Unknown",
+        airlineCode: seg.airlineCode || (seg.airline || "").slice(0, 2).toUpperCase(),
+        flightNumber: seg.flight_no ? String(seg.flight_no) : undefined,
+        originCode: seg.flyFrom || originCode,
+        destinationCode: lastSeg.flyTo || destinationCode,
+        departureDate: dep.toISOString(),
+        arrivalDate: arr.toISOString(),
+        durationMinutes,
+        price: Number(o.price) || 0,
+        currency: "USD",
+        stops,
+        bookingUrl: o.deep_link || o.booking_token ? `https://www.kiwi.com/search/results/${originCode}/${destinationCode}/${date}` : `https://www.kiwi.com/search?from=${originCode}&to=${destinationCode}&departure=${date}`,
+        source: "kiwi",
       });
     }
     return offers;
@@ -228,14 +233,14 @@ function parseDuration(dur: string): number {
   return (parseInt(m[1] || "0") * 60) + parseInt(m[2] || "0");
 }
 
-// Main search function: tries Amadeus first, falls back to mock
-export async function searchFlights(originCode: string, destinationCode: string, date: string): Promise<{ offers: FlightOffer[]; source: "amadeus" | "mock"; liveAvailable: boolean }> {
+// Main search function: tries Kiwi first, falls back to mock
+export async function searchFlights(originCode: string, destinationCode: string, date: string): Promise<{ offers: FlightOffer[]; source: "kiwi" | "mock"; liveAvailable: boolean }> {
   originCode = originCode.toUpperCase();
   destinationCode = destinationCode.toUpperCase();
 
-  const live = await searchAmadeusLive(originCode, destinationCode, date);
+  const live = await searchKiwiLive(originCode, destinationCode, date);
   if (live && live.length > 0) {
-    return { offers: live, source: "amadeus", liveAvailable: true };
+    return { offers: live, source: "kiwi", liveAvailable: true };
   }
 
   const mock = generateMockOffers(originCode, destinationCode, date);

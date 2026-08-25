@@ -85,7 +85,7 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
   const [toState, setToState] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchSource, setSearchSource] = useState<"amadeus" | "mock" | null>(null);
+  const [searchSource, setSearchSource] = useState<"kiwi" | "mock" | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -237,12 +237,12 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
                 <p className="section-title-sub">{searchResults.length} flight{searchResults.length !== 1 ? "s" : ""} found</p>
                 {searchSource === "mock" && (
                   <span style={{ fontSize: "0.6875rem", padding: "0.25rem 0.5rem", background: "rgba(201, 168, 76, 0.18)", color: "var(--color-secondary-dark)", borderRadius: 8, fontWeight: 700 }}>
-                    ESTIMATE · Set Amadeus API keys in Railway env for live data
+                    ESTIMATE · Set KIWI_API_KEY in Railway env for live data
                   </span>
                 )}
-                {searchSource === "amadeus" && (
+                {searchSource === "kiwi" && (
                   <span style={{ fontSize: "0.6875rem", padding: "0.25rem 0.5rem", background: "rgba(45, 138, 78, 0.15)", color: "var(--color-success)", borderRadius: 8, fontWeight: 700 }}>
-                    LIVE · Amadeus
+                    LIVE · Kiwi.com
                   </span>
                 )}
               </div>
@@ -295,7 +295,7 @@ export default function TravelClient({ userRole, userId, shows, users, flightOpt
           {searchSource === "mock" && searchResults.length === 0 && !searching && (
             <GlassCard padding="md" variant="soft">
               <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", margin: 0 }}>
-                💡 <strong>Tip:</strong> Set <code>AMADEUS_CLIENT_ID</code> and <code>AMADEUS_CLIENT_SECRET</code> in Railway env to enable live flight search. Without keys, results are estimates based on distance + airline base rates.
+                💡 <strong>Tip:</strong> Set <code>KIWI_API_KEY</code> in Railway env to enable live flight search via Kiwi.com. Without a key, results are estimates based on distance + airline base rates.
               </p>
             </GlassCard>
           )}
