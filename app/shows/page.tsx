@@ -16,9 +16,13 @@ function ShowsInner() {
   const [drawerStatus, setDrawerStatus] = useState<Record<string, any>>({});
   const [user, setUser] = useState<any>(null);
 
+  const refresh = () => {
+    fetch("/api/shows").then((r) => r.json()).then((d) => { setShows(d); setLoading(false); });
+  };
+
   useEffect(() => {
     fetch("/api/auth/session").then((r) => r.json()).then((s) => setUser(s.user));
-    fetch("/api/shows").then((r) => r.json()).then((d) => { setShows(d); setLoading(false); });
+    refresh();
   }, []);
 
   const openDrawer = async (showId: string) => {
@@ -46,13 +50,30 @@ function ShowsInner() {
     if (res.ok) setDrawerStatus((s) => ({ ...s, [showId]: null }));
   };
 
+  const setShowStatus = async (showId: string, newStatus: string) => {
+    const res = await fetch(`/api/shows/${showId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) refresh();
+    else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Failed to update status");
+    }
+  };
+
   const grouped = {
     ACTIVE: shows.filter((s) => s.status === "ACTIVE"),
     UPCOMING: shows.filter((s) => s.status === "UPCOMING"),
     COMPLETED: shows.filter((s) => s.status === "COMPLETED"),
+    CANCELLED: shows.filter((s) => s.status === "CANCELLED"),
   };
+  const groupedOrdered = ["ACTIVE", "UPCOMING", "COMPLETED", "CANCELLED"] as const;
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: "var(--color-text-muted)" }}>Loading…</div>;
+
+  const canManage = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
     <>
@@ -89,20 +110,24 @@ function ShowsInner() {
         </GlassCard>
       )}
 
-      {Object.entries(grouped).map(([status, list]) =>
-        list.length > 0 ? (
-          <div key={status} style={{ marginBottom: "1.5rem" }}>
+      {groupedOrdered.map((statusKey) => {
+        const list = grouped[statusKey];
+        if (list.length === 0) return null;
+        return (
+          <div key={statusKey} style={{ marginBottom: "1.5rem" }}>
             <div className="section-title">
-              <h2 style={{ fontSize: "0.9375rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>{status.toLowerCase()}</h2>
+              <h2 style={{ fontSize: "0.9375rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-muted)" }}>{statusKey.toLowerCase()}</h2>
               <span className="section-title-sub">{list.length}</span>
             </div>
             <div style={{ display: "grid", gap: 10 }}>
               {list.map((show: any) => {
                 const drawer = drawerStatus[show.id] ?? null;
-                const statusBadgeCls = show.status === "ACTIVE" ? "badge-success" : show.status === "UPCOMING" ? "badge-primary" : "badge-secondary";
+                const statusBadgeCls = show.status === "ACTIVE" ? "badge-success" : show.status === "UPCOMING" ? "badge-primary" : show.status === "CANCELLED" ? "badge-danger" : "badge-secondary";
+                const canDraw = show.status === "ACTIVE" || show.status === "UPCOMING";
+
                 return (
                   <GlassCard key={show.id} padding="md">
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: show.status === "ACTIVE" ? 12 : 0, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: canDraw || canManage ? 12 : 0, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>{show.name}</h3>
@@ -113,18 +138,40 @@ function ShowsInner() {
                         <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: 2 }}>
                           {format(new Date(show.startDate), "MMM d")} — {format(new Date(show.endDate), "MMM d, yyyy")}
                           {show.assignments?.length > 0 && ` · ${show.assignments.length} assigned`}
+                          {show.manager?.name && ` · ${show.manager.name}`}
                         </p>
                       </div>
+                      {canManage && show.status === "UPCOMING" && (
+                        <button
+                          onClick={() => setShowStatus(show.id, "ACTIVE")}
+                          className="btn btn-secondary"
+                          style={{ minHeight: 36, padding: "0.5rem 0.875rem", fontSize: "0.8125rem" }}
+                        >
+                          <Icon name="circle" size={14} />
+                          <span>Mark Active</span>
+                        </button>
+                      )}
+                      {canManage && show.status === "ACTIVE" && (
+                        <button
+                          onClick={() => setShowStatus(show.id, "COMPLETED")}
+                          className="btn btn-secondary"
+                          style={{ minHeight: 36, padding: "0.5rem 0.875rem", fontSize: "0.8125rem" }}
+                        >
+                          <Icon name="check" size={14} />
+                          <span>Mark Completed</span>
+                        </button>
+                      )}
                     </div>
-                    {show.status === "ACTIVE" && (
-                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+
+                    {canDraw && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
                         {drawer?.isActive ? (
                           <>
                             <div style={{ flex: 1, padding: "0.5rem 0.75rem", background: "rgba(45, 138, 78, 0.10)", borderRadius: 10, fontSize: "0.75rem", color: "var(--color-success)", fontWeight: 600, display: "flex", alignItems: "center" }}>
                               Drawer open · Float {formatCurrency(drawer.openingFloat)}
                             </div>
                             <button onClick={() => closeDrawer(show.id)} className="btn btn-secondary" style={{ minHeight: 36, padding: "0.5rem 0.875rem" }}>Close</button>
-                            <button onClick={() => router.push("/sale")} className="btn btn-primary" style={{ minHeight: 36, padding: "0.5rem 0.875rem" }}>POS</button>
+                            <button onClick={() => router.push(`/sale?showId=${show.id}`)} className="btn btn-primary" style={{ minHeight: 36, padding: "0.5rem 0.875rem" }}>POS</button>
                           </>
                         ) : (
                           <button onClick={() => openDrawer(show.id)} className="btn btn-primary btn-block" style={{ minHeight: 40 }}>
@@ -138,8 +185,8 @@ function ShowsInner() {
               })}
             </div>
           </div>
-        ) : null,
-      )}
+        );
+      })}
     </>
   );
 }

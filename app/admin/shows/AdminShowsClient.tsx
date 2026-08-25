@@ -48,6 +48,7 @@ export default function AdminShowsClient({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [isOutdoor, setIsOutdoor] = useState(false);
+  const [status, setStatus] = useState("UPCOMING");
   const [notes, setNotes] = useState("");
   const [managerId, setManagerId] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
@@ -59,6 +60,7 @@ export default function AdminShowsClient({
     setStartDate("");
     setEndDate("");
     setIsOutdoor(false);
+    setStatus("UPCOMING");
     setNotes("");
     setManagerId("");
     setSelectedEmployees([]);
@@ -88,6 +90,7 @@ export default function AdminShowsClient({
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
         isOutdoor,
+        status,
         notes: notes || undefined,
         managerId: managerId || null,
         employeeIds: selectedEmployees,
@@ -274,6 +277,21 @@ export default function AdminShowsClient({
             </label>
 
             <div>
+              <label className="label" htmlFor="show-status">Status</label>
+              <select
+                id="show-status"
+                className="input"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="UPCOMING">Upcoming</option>
+                <option value="ACTIVE">Active (happening now)</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
               <label className="label">Assign employees ({selectedEmployees.length})</label>
               <div style={{
                 maxHeight: 220,
@@ -406,6 +424,7 @@ export default function AdminShowsClient({
                       setStartDate(format(new Date(show.startDate), "yyyy-MM-dd"));
                       setEndDate(format(new Date(show.endDate), "yyyy-MM-dd"));
                       setIsOutdoor(show.isOutdoor);
+                      setStatus(show.status || "UPCOMING");
                       setNotes(show.notes || "");
                       setManagerId(show.manager?.id || "");
                       setSelectedEmployees(show.assignments?.map((a) => a.user.id) || []);
