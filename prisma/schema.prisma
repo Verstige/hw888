@@ -194,8 +194,8 @@ model Sale {
   parentSaleId           String?      // when source = split, points to original
   notes                  String?
   createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @default(now()) @updatedAt
   syncedAt               DateTime?
-  updatedAt              DateTime     @updatedAt
 
   show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
