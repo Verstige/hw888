@@ -5,6 +5,7 @@ import { SiteShell } from "@/app/components/SiteShell";
 import { GlassCard } from "@/app/components/GlassCard";
 import { KpiTile } from "@/app/components/KpiTile";
 import { Icon } from "@/app/components/Icon";
+import { hw, useAnimations } from "@/app/components/Animations";
 import { RevenueTrendChart, CategoryDonut, TopPerformersChart } from "@/app/components/Charts";
 import { formatCurrency } from "@/lib/products";
 import { format } from "date-fns";
@@ -38,6 +39,7 @@ type AnalyticsData = {
 };
 
 export default function AnalyticsClient({ user }: { user: { id: string; name: string; role: "ADMIN" | "MANAGER" | "EMPLOYEE" } }) {
+  useAnimations();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [range, setRange] = useState("30d");
   const [loading, setLoading] = useState(true);
@@ -115,7 +117,7 @@ export default function AnalyticsClient({ user }: { user: { id: string; name: st
       </div>
 
       {/* KPI tiles */}
-      <div style={{ display: "grid", gap: "0.875rem", gridTemplateColumns: "repeat(2, 1fr)", marginBottom: "1.25rem" }}>
+      <div style={{ display: "grid", gap: "0.875rem", gridTemplateColumns: "repeat(2, 1fr)", marginBottom: "1.25rem", ...hw.slideUp(0) }}>
         <div style={{ gridColumn: "1 / -1" }}>
           <KpiTile
             label="Total Sales"
@@ -173,7 +175,7 @@ export default function AnalyticsClient({ user }: { user: { id: string; name: st
       </GlassCard>
 
       {/* Donuts: by level + by payment */}
-      <div style={{ display: "grid", gap: "0.875rem", gridTemplateColumns: "1fr", marginBottom: "1.25rem" }}>
+      <div style={{ display: "grid", gap: "0.875rem", gridTemplateColumns: "1fr", marginBottom: "1.25rem", ...hw.slideUp(80) }}>
         <GlassCard padding="lg">
           <div className="section-title">
             <div>

@@ -6,6 +6,8 @@ import { GlassCard } from "@/app/components/GlassCard";
 import { KpiTile } from "@/app/components/KpiTile";
 import { Icon } from "@/app/components/Icon";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { SalesHistoryTimeline } from "@/app/components/SalesHistoryTimeline";
+import { hw, useAnimations, SectionTitle } from "@/app/components/Animations";
 import { formatCurrency } from "@/lib/products";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -58,6 +60,7 @@ type Breakdown = {
 };
 
 export default function ProfileClient({ user, airports, states, recentSales, attendedShows }: Props) {
+  useAnimations();
   const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState(user.city || "");
@@ -111,7 +114,10 @@ export default function ProfileClient({ user, airports, states, recentSales, att
   return (
     <ClientAuthShell pageTitle="Profile" pageSubtitle="Your stats & settings">
       {/* Profile hero */}
-      <GlassCard padding="lg" variant="strong" style={{ marginBottom: "1.25rem", background: "linear-gradient(135deg, rgba(45, 90, 61, 0.92) 0%, rgba(31, 63, 42, 0.95) 100%)", color: "white", border: "1px solid rgba(255, 255, 255, 0.10)" }}>
+      <GlassCard padding="lg" variant="strong" style={{
+        ...hw.slideUp(0),
+        position: "relative",
+        overflow: "hidden", marginBottom: "1.25rem", background: "linear-gradient(135deg, rgba(45, 90, 61, 0.92) 0%, rgba(31, 63, 42, 0.95) 100%)", color: "white", border: "1px solid rgba(255, 255, 255, 0.10)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div className="avatar avatar-lg" style={{ background: "linear-gradient(135deg, var(--color-secondary) 0%, #F0D584 100%)", color: "var(--color-primary-dark)" }}>
             {initials}
@@ -208,7 +214,20 @@ export default function ProfileClient({ user, airports, states, recentSales, att
         </GlassCard>
       ) : breakdown ? (
         <>
-          <GlassCard padding="lg" variant="strong" style={{ marginBottom: "1.25rem", textAlign: "center", background: "linear-gradient(135deg, rgba(201, 168, 76, 0.25) 0%, rgba(201, 168, 76, 0.08) 100%)", borderColor: "rgba(201, 168, 76, 0.35)" }}>
+          <GlassCard padding="lg" variant="strong" style={{
+            ...hw.slideUp(80),
+            marginBottom: "1.25rem",
+            textAlign: "center",
+            background: "linear-gradient(135deg, rgba(201, 168, 76, 0.25) 0%, rgba(201, 168, 76, 0.08) 100%)",
+            borderColor: "rgba(201, 168, 76, 0.35)",
+            position: "relative", overflow: "hidden",
+          }}>
+            <div aria-hidden style={{
+              position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(201, 168, 76, 0.40) 0%, rgba(201, 168, 76, 0) 70%)",
+              animation: "hw-orbit 22s linear infinite",
+              pointerEvents: "none",
+            }} />
             <p className="section-title-sub" style={{ fontWeight: 700, letterSpacing: "0.05em" }}>Total commission earned (pre-tax)</p>
             <p style={{ fontSize: "3rem", fontWeight: 800, background: "linear-gradient(135deg, var(--color-secondary-dark) 0%, var(--color-secondary) 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "-0.03em", marginTop: 4 }}>
               {formatCurrency(breakdown.total)}

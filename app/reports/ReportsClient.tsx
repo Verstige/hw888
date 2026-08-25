@@ -5,6 +5,7 @@ import { ClientAuthShell } from "@/app/components/ClientAuthShell";
 import { GlassCard } from "@/app/components/GlassCard";
 import { KpiTile } from "@/app/components/KpiTile";
 import { Icon } from "@/app/components/Icon";
+import { hw, useAnimations } from "@/app/components/Animations";
 import { formatCurrency } from "@/lib/products";
 import { format } from "date-fns";
 
@@ -43,6 +44,7 @@ const RANGES = [
 ];
 
 export default function ReportsClient({ userRole, shows, initialShowId }: Props) {
+  useAnimations();
   const [showId, setShowId] = useState<string>(initialShowId || shows[0]?.id || "");
   const [range, setRange] = useState<string>("show");
   const [data, setData] = useState<ReportData | null>(null);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClientAuthShell } from "@/app/components/ClientAuthShell";
 import { GlassCard } from "@/app/components/GlassCard";
 import { Icon } from "@/app/components/Icon";
+import { hw, useAnimations } from "@/app/components/Animations";
 import { formatCurrency } from "@/lib/products";
 import { format } from "date-fns";
 
@@ -61,6 +62,7 @@ export default function ShippingClient({
   orders: any[];
   customers: Customer[];
 }) {
+  useAnimations();
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>(initial);
   const [tab, setTab] = useState<"new" | "active" | "delivered" | "all">("new");
@@ -107,7 +109,7 @@ export default function ShippingClient({
 
   return (
     <ClientAuthShell pageTitle="Shipping" pageSubtitle="Track + manage deliveries">
-      <div style={{ marginBottom: "1rem" }}>
+      <div style={{ ...hw.slideUp(0), marginBottom: "1rem" }}>
         <h1 className="text-gradient" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>Shipping</h1>
         <p className="section-title-sub" style={{ marginTop: 4 }}>
           {counts.new} new · {counts.active} active · {counts.delivered} delivered
@@ -123,13 +125,13 @@ export default function ShippingClient({
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: "1rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: "1rem", flexWrap: "wrap", ...hw.slideUp(60) }}>
         <button onClick={() => setCreating(true)} className="btn btn-primary" style={{ flex: 1 }}>
           <Icon name="plus" size={16} /><span>New shipment</span>
         </button>
       </div>
 
-      <GlassCard padding="md" style={{ marginBottom: "1rem" }}>
+      <GlassCard padding="md" style={{ ...hw.slideUp(120), marginBottom: "1rem" }}>
         <div style={{ position: "relative" }}>
           <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-muted)", pointerEvents: "none" }}>
             <Icon name="search" size={16} />

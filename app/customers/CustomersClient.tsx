@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClientAuthShell } from "@/app/components/ClientAuthShell";
 import { GlassCard } from "@/app/components/GlassCard";
 import { Icon } from "@/app/components/Icon";
+import { hw, useAnimations } from "@/app/components/Animations";
 import { formatCurrency } from "@/lib/products";
 import { format } from "date-fns";
 
@@ -40,6 +41,7 @@ export default function CustomersClient({
   customers: Customer[];
   owners: Owner[];
 }) {
+  useAnimations();
   const router = useRouter();
   const [customers, setCustomers] = useState(initial);
   const [search, setSearch] = useState("");
@@ -80,7 +82,7 @@ export default function CustomersClient({
 
       {tab === "list" && (
         <>
-          <GlassCard padding="md" style={{ marginBottom: "1rem" }}>
+          <GlassCard padding="md" style={{ ...hw.slideUp(0), marginBottom: "1rem" }}>
             <div style={{ position: "relative" }}>
               <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-muted)", pointerEvents: "none" }}><Icon name="search" size={16} /></span>
               <input
@@ -94,7 +96,7 @@ export default function CustomersClient({
           </GlassCard>
 
           {filtered.length === 0 ? (
-            <GlassCard padding="lg">
+            <GlassCard padding="lg" style={hw.scaleIn(50)}>
               <div className="empty-state">
                 <div className="empty-state-icon">👥</div>
                 <p style={{ marginBottom: 4 }}>{search ? "No customers match your search" : "No customers yet"}</p>
@@ -103,8 +105,10 @@ export default function CustomersClient({
             </GlassCard>
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
-              {filtered.map((c) => (
-                <CustomerCard key={c.id} customer={c} onClick={() => { setEditingId(c.id); setTab("view"); }} />
+              {filtered.map((c, i) => (
+                <div key={c.id} style={hw.slideUp(i * 40)}>
+                  <CustomerCard customer={c} onClick={() => { setEditingId(c.id); setTab("view"); }} />
+                </div>
               ))}
             </div>
           )}
