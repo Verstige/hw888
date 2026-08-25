@@ -85,13 +85,28 @@ model User {
   travelTrips        TravelTrip[]
   equipmentTasks      EquipmentTask[]
   equipmentCompleted  EquipmentTask[] @relation("EquipmentCompletedBy")
-  groceryItemsAdded  GroceryItem[] @relation("AddedBy")
+  groceryItemsAdded  GroceryItem[]   @relation("AddedBy")
   groceryItemsPurchased GroceryItem[] @relation("PurchasedBy")
   managedShows       Show[]            @relation("ManagerShows")
   cashDrawers        CashDrawer[]
+  commissionRate     CommissionRate?
 
   @@index([managerId])
   @@index([role])
+}
+
+// ─── CommissionRate ──────────────────────────────────────────────────────────
+
+model CommissionRate {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  baseRate      Float    @default(0.30)   // % on user's own sales
+  managerBonus  Float    @default(0.00)   // % bonus on team total at attended shows
+  effectiveFrom DateTime @default(now())
+  notes         String?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ─── Show ─────────────────────────────────────────────────────────────────────
@@ -162,19 +177,20 @@ model CashDrawer {
 // ─── Sale ─────────────────────────────────────────────────────────────────────
 
 model Sale {
-  id             String       @id @default(cuid())
-  showId         String
-  userId         String
-  productLevel   ProductLevel
-  productModel   String
-  productStyle   String
-  salePrice      Float
-  paymentType    PaymentType
-  commission     Float        // 30% of salePrice
-  isOffline      Boolean      @default(false)
-  offlineSynced  Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  syncedAt       DateTime?
+  id                     String       @id @default(cuid())
+  showId                 String
+  userId                 String
+  productLevel           ProductLevel
+  productModel           String
+  productStyle           String
+  salePrice              Float
+  paymentType            PaymentType
+  commission             Float        // commission at time of sale
+  commissionRateSnapshot Float        @default(0.30) // rate that was applied (for audit)
+  isOffline              Boolean      @default(false)
+  offlineSynced          Boolean      @default(false)
+  createdAt              DateTime     @default(now())
+  syncedAt               DateTime?
 
   show Show @relation(fields: [showId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

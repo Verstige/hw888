@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateCommission } from "@/lib/products";
+import { getCommissionRate, computeCommission } from "@/lib/commission";
 
-// POST /api/sales — record a sale
+// POST /api/sales — record a sale (uses user's CommissionRate for commission)
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const commission = calculateCommission(salePrice);
+  const { baseRate } = await getCommissionRate(userId);
+  const commission = computeCommission(salePrice, baseRate);
 
   const sale = await prisma.sale.create({
     data: {
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       salePrice,
       paymentType,
       commission,
+      commissionRateSnapshot: baseRate,
       isOffline: !!isOffline,
     },
     include: {
@@ -56,12 +58,17 @@ export async function GET(req: NextRequest) {
   const userRole = (session.user as any).role;
   const { searchParams } = new URL(req.url);
   const showId = searchParams.get("showId");
-  const range = searchParams.get("range"); // today, 3d, 7d, 14d, 30d, 60d
-  const limit = parseInt(searchParams.get("limit") || "50");
+  const userIdFilter = searchParams.get("userId");
+  const paymentType = searchParams.get("paymentType");
+  const range = searchParams.get("range"); // today, 3d, 7d, 14d, 30d, 60d, all
+  const limit = parseInt(searchParams.get("limit") || "100");
+  const offset = parseInt(searchParams.get("offset") || "0");
 
   let where: any = {};
 
   if (showId) where.showId = showId;
+  if (userIdFilter) where.userId = userIdFilter;
+  if (paymentType) where.paymentType = paymentType;
 
   // Role-based filtering
   if (userRole === "EMPLOYEE") {
@@ -75,7 +82,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Date range filter
-  if (range) {
+  if (range && range !== "all") {
     const now = new Date();
     let startDate: Date;
     switch (range) {
@@ -90,21 +97,32 @@ export async function GET(req: NextRequest) {
     where.createdAt = { gte: startDate };
   }
 
-  const sales = await prisma.sale.findMany({
-    where,
-    include: {
-      user: { select: { id: true, name: true } },
-      show: { select: { id: true, name: true, location: true } },
+  const [sales, totals, totalCount] = await Promise.all([
+    prisma.sale.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true, role: true } },
+        show: { select: { id: true, name: true, location: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.sale.aggregate({
+      where,
+      _sum: { salePrice: true, commission: true },
+      _count: true,
+    }),
+    prisma.sale.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    sales,
+    totals: {
+      totalSales: totals._sum.salePrice || 0,
+      totalCommission: totals._sum.commission || 0,
+      count: totals._count || 0,
     },
-    orderBy: { createdAt: "desc" },
-    take: limit,
+    pagination: { total: totalCount, limit, offset },
   });
-
-  const totals = await prisma.sale.aggregate({
-    where,
-    _sum: { salePrice: true, commission: true },
-    _count: true,
-  });
-
-  return NextResponse.json({ sales, totals });
 }

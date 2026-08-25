@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BottomDock } from "./BottomDock";
 import { TopNav } from "./TopNav";
 import { Icon } from "./Icon";
+import { ThemeToggle } from "./ThemeToggle";
 import { logoutAction } from "@/app/login/actions";
 
 type SiteShellProps = {
@@ -58,6 +59,7 @@ export function SiteShell({
               <Icon name="logout" size={18} />
             </button>
           </form>
+          <ThemeToggle compact />
         </div>
       </div>
 
@@ -70,7 +72,7 @@ export function SiteShell({
               <h1>{pageTitle}</h1>
               {pageSubtitle && <p className="section-title-sub" style={{ marginTop: 2 }}>{pageSubtitle}</p>}
             </div>
-            {rightSlot || <div style={{ width: 28 }} />}
+            {rightSlot ? <div style={{ display: "flex", alignItems: "center", gap: 4 }}>{rightSlot}<ThemeToggle compact /></div> : <ThemeToggle compact />}
           </div>
         </div>
       )}

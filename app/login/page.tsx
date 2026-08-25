@@ -75,7 +75,7 @@ export default function LoginPage() {
             fontSize: "2.5rem",
             fontWeight: 800,
             letterSpacing: "-0.04em",
-            color: "white",
+            color: "var(--color-text)",
             lineHeight: 1,
             marginBottom: "0.5rem",
           }}>
@@ -83,7 +83,7 @@ export default function LoginPage() {
           </h1>
           <p style={{
             fontSize: "0.9375rem",
-            color: "rgba(255, 255, 255, 0.70)",
+            color: "var(--color-text-muted)",
             letterSpacing: "0.04em",
             textTransform: "uppercase",
             fontWeight: 600,
@@ -92,7 +92,7 @@ export default function LoginPage() {
           </p>
           <p style={{
             fontSize: "0.9375rem",
-            color: "rgba(255, 255, 255, 0.55)",
+            color: "var(--color-text-muted)",
             marginTop: "0.75rem",
             lineHeight: 1.5,
             maxWidth: 320,
@@ -172,8 +172,9 @@ export default function LoginPage() {
         <p style={{
           textAlign: "center",
           fontSize: "0.75rem",
-          color: "rgba(255, 255, 255, 0.45)",
+          color: "var(--color-text-muted)",
           marginTop: "1.5rem",
+          opacity: 0.7,
         }}>
           HW888 · Internal Platform · v2.0
         </p>

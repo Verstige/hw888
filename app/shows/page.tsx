@@ -128,6 +128,7 @@ function ShowsInner() {
                 return (
                   <GlassCard key={show.id} padding="md">
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: canDraw || canManage ? 12 : 0, flexWrap: "wrap" }}>
+                    <Link href={`/shows/${show.id}`} style={{ textDecoration: "none", color: "inherit", display: "block", flex: 1, minWidth: 0 }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>{show.name}</h3>
@@ -141,6 +142,7 @@ function ShowsInner() {
                           {show.manager?.name && ` · ${show.manager.name}`}
                         </p>
                       </div>
+                    </Link>
                       {canManage && show.status === "UPCOMING" && (
                         <button
                           onClick={() => setShowStatus(show.id, "ACTIVE")}

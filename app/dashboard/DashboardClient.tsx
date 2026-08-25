@@ -178,6 +178,17 @@ export default function DashboardClient({ user, todaySales, lifetimeSales, activ
                     </div>
                   </GlassCard>
                 </Link>
+                <Link href="/admin/sales" style={{ textDecoration: "none" }}>
+                  <GlassCard interactive padding="md" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #3FA562 0%, #2D8A4E 100%)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon name="sale" size={18} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-text)" }}>Sales</p>
+                      <p style={{ fontSize: "0.6875rem", color: "var(--color-text-muted)" }}>All transactions</p>
+                    </div>
+                  </GlassCard>
+                </Link>
                 <Link href="/admin/inventory" style={{ textDecoration: "none" }}>
                   <GlassCard interactive padding="md" style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>

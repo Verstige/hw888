@@ -16,29 +16,30 @@ function buildTabsForRole(role: "ADMIN" | "MANAGER" | "EMPLOYEE"): DockTab[] {
   const common: DockTab[] = [
     { href: "/dashboard", label: "Home", icon: "home", match: (p) => p === "/dashboard" },
     { href: "/sale", label: "Sale", icon: "sale" },
-    { href: "/shows", label: "Shows", icon: "calendar", match: (p) => p.startsWith("/shows") || p === "/admin/shows" },
-    { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+    { href: "/shows", label: "Shows", icon: "calendar", match: (p) => p.startsWith("/shows") && !p.startsWith("/shows/") },
   ];
 
   if (role === "EMPLOYEE") {
     return [
       ...common,
-      { href: "/leaderboard", label: "Stats", icon: "trophy" },
+      { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+      { href: "/profile", label: "Profile", icon: "users", match: (p) => p === "/profile" },
     ];
   }
 
   if (role === "MANAGER") {
     return [
       ...common,
-      { href: "/analytics", label: "Analytics", icon: "analytics", match: (p) => p === "/analytics" },
+      { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+      { href: "/profile", label: "Profile", icon: "users", match: (p) => p === "/profile" },
     ];
   }
 
   // ADMIN
   return [
     ...common,
-    { href: "/analytics", label: "Analytics", icon: "analytics", match: (p) => p === "/analytics" },
-    { href: "/admin/users", label: "Admin", icon: "shield", match: (p) => p.startsWith("/admin") },
+    { href: "/shows/calendar", label: "Calendar", icon: "calendar-grid", match: (p) => p === "/shows/calendar" },
+    { href: "/profile", label: "Profile", icon: "users", match: (p) => p === "/profile" },
   ];
 }
 

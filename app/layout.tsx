@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/app/components/ThemeToggle";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -25,7 +26,10 @@ export const viewport: Viewport = {
   userScalable: true,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: "#0F1A14",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1A14" },
+  ],
 };
 
 export default function RootLayout({
@@ -36,7 +40,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable}`}>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
