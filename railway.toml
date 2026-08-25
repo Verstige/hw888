@@ -4,11 +4,14 @@ buildCommand = "npx prisma generate && npm run build"
 
 [deploy]
 startCommand = "npx prisma db push --accept-data-loss && npm start"
-healthCheckPath = "/"
+healthCheckPath = "/login"
+healthCheckTimeout = 30
 
 [environments.production]
 buildCommand = "npx prisma generate && npm run build"
 startCommand = "npx prisma db push --accept-data-loss && npm start"
+healthCheckPath = "/login"
+healthCheckTimeout = 30
 
 [nixpacks]
 node_version = "22"
